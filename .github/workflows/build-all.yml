@@ -5,68 +5,56 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-env:
-  JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
-
 jobs:
+  # --- 编译 Windows 版本 (MSI 和 EXE) ---
   build-windows:
-    name: Build Windows MSI + EXE
+    name: Build Windows Artifacts
     runs-on: windows-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        id: setup-java
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          # cache: 'gradle' # 如果之前报错 tar.exe，保持注释
 
-      - name: Install WiX Toolset (for MSI packaging)
-        run: choco install wixtoolset -y
-
-      - name: Build Windows MSI
+      - name: Build Windows Distributions
         shell: cmd
-        run: |
-          gradlew.bat :composeApp:packageReleaseMsi --no-daemon
+        # packageDistribution 会根据 build.gradle.kts 里的 targetFormats 生成所有格式
+        run: gradlew.bat packageDistribution
 
-      - name: Build Windows EXE
-        shell: cmd
-        run: |
-          gradlew.bat :composeApp:packageReleaseExe --no-daemon
-
-      - name: Upload Windows MSI
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pgprint-windows-msi
-          path: composeApp/build/compose/binaries/main/msi/*.msi
+          name: pgprint-windows-binaries
+          # 使用多行路径，同时捕获 msi 和 exe
+          path: |
+            **/build/compose/binaries/main/msi/*.msi
+            **/build/compose/binaries/main/exe/*.exe
 
-      - name: Upload Windows EXE
-        uses: actions/upload-artifact@v4
-        with:
-          name: pgprint-windows-exe
-          path: composeApp/build/compose/binaries/main/exe/*.exe
-
+  # --- 编译 macOS 版本 ---
   build-mac:
     name: Build macOS DMG
     runs-on: macos-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+          cache: 'gradle'
 
-      - name: Build macOS DMG
-        run: ./gradlew :composeApp:packageReleaseDmg --no-daemon
+      - name: Build DMG
+        run: ./gradlew packageDmg
 
-      - name: Upload macOS DMG
+      - name: Upload Mac DMG
         uses: actions/upload-artifact@v4
         with:
           name: pgprint-mac-dmg
-          path: composeApp/build/compose/binaries/main/dmg/*.dmg
+          path: "**/build/compose/binaries/main/dmg/*.dmg"
