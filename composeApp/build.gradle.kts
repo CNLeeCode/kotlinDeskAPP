@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import java.lang.System.console
 
 
 plugins {
@@ -12,6 +13,7 @@ kotlin {
     jvm()
     sourceSets {
         commonMain.dependencies {
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -25,6 +27,13 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
+            // 查询串口/USB
+            implementation("com.fazecast:jSerialComm:2.10.4")
+            implementation("org.usb4java:usb4java-javax:1.3.0")
+
+            // escpos
+            implementation("com.github.anastaciocintra:escpos-coffee:4.1.0")
+
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
         }
@@ -53,6 +62,7 @@ compose.desktop {
             macOS {
                 bundleID = "com.pgprint.app"
                 packageName = "PG"
+                console()
             }
         }
     }
