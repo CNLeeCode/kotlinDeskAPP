@@ -53,13 +53,11 @@ compose.desktop {
                 shortcut = true
                 menu = true
                 dirChooser = true
-                upgradeUuid = "你的唯一UUID-例如-550e8400-e29b-41d4-a716-446655440000"
-                iconFile.set(project.file("icons/icon.ico"))
+                upgradeUuid = "550e8400-e29b-41d4-a716-446655440000"
                 includeAllModules = true
             }
             macOS {
                 bundleID = "com.pgprint.app"
-                iconFile.set(project.file("icons/icon.icns"))
                 packageName = "PG"
             }
         }
