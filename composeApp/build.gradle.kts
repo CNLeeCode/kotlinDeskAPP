@@ -1,5 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -9,14 +9,7 @@ plugins {
 }
 
 kotlin {
-    jvm {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
-
-    jvmToolchain(11)
-    
+    jvm()
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -47,14 +40,15 @@ compose.desktop {
             targetFormats(TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "PGPrint"
             packageVersion = "1.0.0"
-            copyright = "© 2025 比优特商贸集团"
-            description = "电商到家专业USB打印工具"
+            copyright = "2025 BUTCOMPANY"
+            description = "2025 BUTCOMPANY"
             windows {
                 shortcut = true
                 menu = true
                 dirChooser = true
                 upgradeUuid = "550e8400-e29b-41d4-a716-446655440000"
                 includeAllModules = true
+                console = true
             }
             macOS {
                 bundleID = "com.pgprint.app"
