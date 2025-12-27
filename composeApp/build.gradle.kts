@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,7 +9,13 @@ plugins {
 }
 
 kotlin {
-    jvm()
+    jvm {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
+    }
+
+    jvmToolchain(11)
     
     sourceSets {
         commonMain.dependencies {
@@ -37,9 +44,24 @@ compose.desktop {
         mainClass = "com.pgprint.app.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.pgprint.app"
+            targetFormats(TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            packageName = "PGPrint"
             packageVersion = "1.0.0"
+            copyright = "© 2025 比优特商贸集团"
+            description = "电商到家专业USB打印工具"
+            windows {
+                shortcut = true
+                menu = true
+                dirChooser = true
+                upgradeUuid = "你的唯一UUID-例如-550e8400-e29b-41d4-a716-446655440000"
+                iconFile.set(project.file("icons/icon.ico"))
+                includeAllModules = true
+            }
+            macOS {
+                bundleID = "com.pgprint.app"
+                iconFile.set(project.file("icons/icon.icns"))
+                packageName = "PG"
+            }
         }
     }
 }
