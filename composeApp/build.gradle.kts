@@ -89,7 +89,7 @@ compose.desktop {
             copyright = "2025 BUTCOMPANY"
             description = "2025 BUTCOMPANY"
             windows {
-                menuGroup = "PG外卖打印"
+                menuGroup = "pgprinter"
                 shortcut = true
                 menu = true
                 dirChooser = true
