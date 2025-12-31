@@ -3,6 +3,9 @@ package com.pgprint.app
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.LocalMinimumInteractiveComponentEnforcement
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -21,7 +24,9 @@ import com.pgprint.app.component.AppFooter
 import com.pgprint.app.router.DefaultRootComponent
 import com.pgprint.app.router.RootContent
 import com.pgprint.app.utils.AppRequest
+import com.pgprint.app.utils.AppStrings
 import com.pgprint.app.utils.CrashHandler
+import com.pgprint.app.utils.PersistentCache
 import com.pgprint.app.utils.Utils
 import io.ktor.client.request.head
 import kotlinx.coroutines.CoroutineScope
@@ -36,6 +41,7 @@ fun LifecycleOwner.componentScope(): CoroutineScope {
     return scope
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 fun main() = application {
     val version = BuildConfig.APP_VERSION
     System.setProperty("skiko.renderApi", "SOFTWARE")
@@ -56,7 +62,7 @@ fun main() = application {
 
     Window(
         onCloseRequest = ::exitApplication,
-        title = "PG外卖到家小票打印V$version",
+        title = "${AppStrings.appName}${version}",
         state = mainWindowState,
     ) {
         MenuBar {
@@ -70,9 +76,14 @@ fun main() = application {
             Menu("帮助") {
                 Item("检查更新", onClick = { })
                 Item("错误日志", onClick = CrashHandler::onHandleOpenLogFolder)
+                Item("缓存地址", onClick = PersistentCache::openCatchDir)
                 Item("关于PG打印", onClick = { })
             }
         }
-        RootContent(component = root, modifier = Modifier.fillMaxSize().background(Color.Blue))
+        CompositionLocalProvider(
+            LocalMinimumInteractiveComponentEnforcement provides false
+        ) {
+            RootContent(component = root, modifier = Modifier.fillMaxSize().background(Color.Blue))
+        }
     }
 }

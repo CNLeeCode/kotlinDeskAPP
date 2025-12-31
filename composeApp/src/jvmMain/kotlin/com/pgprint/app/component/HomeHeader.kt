@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pgprint.app.utils.AppColors
@@ -99,13 +100,13 @@ fun ChoosePrintDeviceList(
 @Composable
 fun ChoosePlatformItem(
     modifier: Modifier = Modifier,
-    title: String = "外卖平台"
+    title: String = "外卖平台外卖平台外卖平台外卖平台"
 ) {
-    ListItem(
+    CellItem(
         modifier = modifier.fillMaxWidth().clickable {
             println("clickable")
         },
-        headlineContent = { Text(title) },
+        headlineContent = { Text(title, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = {
             Image(
                 painter = painterResource(Res.drawable.dy),
@@ -115,6 +116,7 @@ fun ChoosePlatformItem(
         },
         trailingContent = {
             Checkbox(
+                modifier = Modifier.size(12.dp),
                 checked = false,
                 onCheckedChange = {
                     println("onCheckedChange $it")

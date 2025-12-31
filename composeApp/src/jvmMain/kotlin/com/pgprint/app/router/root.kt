@@ -2,6 +2,7 @@ package com.pgprint.app.router
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -13,12 +14,21 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.childStack
+import com.arkivanov.decompose.router.stack.push
+import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
 import com.pgprint.app.App
+import com.pgprint.app.BuildConfig
+import com.pgprint.app.Login
 import com.pgprint.app.componentScope
 import com.pgprint.app.router.component.DefaultHomeComponent
+import com.pgprint.app.router.component.DefaultLoginComponent
 import com.pgprint.app.router.component.HomeComponent
+import com.pgprint.app.router.component.LoginComponent
+import com.pgprint.app.utils.AppFlow
 import com.pgprint.app.utils.AppRequest
+import com.pgprint.app.utils.DataStored
+import com.pgprint.app.utils.PersistentCache
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.head
 import io.ktor.client.statement.HttpResponse
@@ -40,10 +50,13 @@ data class OnlineStatusData(
 interface RootComponent {
     val childStack: Value<ChildStack<*, Child>>
     val networkStatusData: MutableStateFlow<OnlineStatusData>
+     val currentShopId: MutableStateFlow<String>
     // 定义可能的子页面
     sealed class Child {
         class Home(val component: HomeComponent) : Child()
+        class Login(val component: LoginComponent) : Child()
     }
+    fun saveCurrentShopId(shopId: String)
 }
 
 // 实现类
@@ -52,7 +65,11 @@ class DefaultRootComponent(
 ) : RootComponent, ComponentContext by componentContext {
 
     private val scope = componentScope()
+    // 当前网络状态
     override val networkStatusData = MutableStateFlow<OnlineStatusData>(OnlineStatusData())
+    // 当前门店号
+     override val currentShopId = MutableStateFlow<String>("")
+
     // 1. 定义导航器 (StackNavigation)
     private val navigation = StackNavigation<Config>()
 
@@ -60,14 +77,18 @@ class DefaultRootComponent(
     override val childStack: Value<ChildStack<*, RootComponent.Child>> = childStack(
         source = navigation,
         serializer = Config.serializer(),
-        initialConfiguration = Config.Home, // 初始页面
+        initialConfiguration = Config.Login, // 初始页面
         handleBackButton = true,
         childFactory = ::createChild
     )
 
     private fun createChild(config: Config, context: ComponentContext): RootComponent.Child {
         return when (config) {
-            is Config.Home -> RootComponent.Child.Home(DefaultHomeComponent(context))
+            is Config.Login ->  RootComponent.Child.Login(DefaultLoginComponent(context, toHome = { shopId ->
+                saveCurrentShopId(shopId)
+                navigation.replaceCurrent(Config.Home(shopId))
+            } ))
+            is Config.Home -> RootComponent.Child.Home(DefaultHomeComponent(context, config.shopId))
         }
     }
 
@@ -75,6 +96,12 @@ class DefaultRootComponent(
         startNetworkMonitor()
     }
 
+    override fun saveCurrentShopId(shopId: String) {
+        currentShopId.value = shopId
+        scope.launch (Dispatchers.IO) {
+            DataStored.saveShopId(shopId)
+        }
+    }
 
     private suspend fun checkServerHealth(url: String): OnlineStatusData {
         return try {
@@ -111,26 +138,34 @@ class DefaultRootComponent(
     // 定义配置（路由参数）
     @Serializable
     sealed class Config {
+
         @Serializable
-        object Home : Config()
+        data class Home(val shopId: String) : Config()
+
+        @Serializable
+        object Login : Config()
     }
 }
 
 val LocalNetworkStatus = staticCompositionLocalOf { OnlineStatusData() }
-
+val LocalCurrentShopId = staticCompositionLocalOf { "" }
 @Composable
 fun RootContent(component: RootComponent, modifier: Modifier = Modifier) {
-    val networkStatusData by component.networkStatusData.collectAsStateWithLifecycle()
-
+    val networkStatusData by component.networkStatusData.collectAsState()
+    val localCurrentShopId by component.currentShopId.collectAsState()
     CompositionLocalProvider(LocalNetworkStatus provides networkStatusData) {
-        Children(
-            stack = component.childStack,
-            modifier = modifier,
-            animation = stackAnimation(fade()),
-        ) {
-            when (val child = it.instance) {
-                is RootComponent.Child.Home -> App(component = child.component)
+        CompositionLocalProvider(LocalCurrentShopId provides localCurrentShopId) {
+            Children(
+                stack = component.childStack,
+                modifier = modifier,
+                animation = stackAnimation(fade()),
+            ) {
+                when (val child = it.instance) {
+                    is RootComponent.Child.Login -> Login(component = child.component)
+                    is RootComponent.Child.Home  -> App(component = child.component)
+                }
             }
         }
+
     }
 }

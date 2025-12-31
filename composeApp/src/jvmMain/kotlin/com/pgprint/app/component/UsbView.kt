@@ -89,12 +89,16 @@ fun ChoosePrinterDeviceItem(
     name: String = "打印机名称打印机名称打印机名称打印机名称",
     desc: String = "类型"
 ) {
-    ListItem(
-        modifier = modifier.fillMaxWidth().height(50.dp).clickable {
-            println("clickable")
+    CellItem(
+        headlineContent  = {
+            EllipsisTooltipText(
+                text = name,
+                fontSize = 14.sp,
+            ) {
+                Text(text = name, fontSize = 12.sp, color = Color.Gray)
+            }
         },
-        overlineContent = {  Text(text = name, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())  },
-        headlineContent = { Text(text =desc, fontSize = 10.sp, color = Color.Gray) },
+        overlineContent = { Text(text =desc, fontSize = 10.sp, color = Color.Gray) },
         leadingContent = {
             Image(
                 painter = painterResource(Res.drawable.usb),
@@ -107,7 +111,8 @@ fun ChoosePrinterDeviceItem(
                 checked = false,
                 onCheckedChange = {
                     println("onCheckedChange $it")
-                }
+                },
+                modifier = Modifier.size(12.dp)
             )
         },
     )

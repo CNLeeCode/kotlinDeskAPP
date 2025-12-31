@@ -18,6 +18,7 @@ buildConfig {
     packageName("com.pgprint.app") // 明确指定包名
     buildConfigField("APP_VERSION", myAppVersion)
     buildConfigField("STORED_DIR", "pgprint")
+    buildConfigField("STORED_PREFX", "pgprint_")
 
 }
 
@@ -42,8 +43,10 @@ kotlin {
             implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
             // LOG
             implementation("io.ktor:ktor-client-logging:3.0.0")
-            //ehcache 缓存
-            implementation("org.ehcache:ehcache:3.10.8")
+
+            // datastore
+            implementation("androidx.datastore:datastore:1.2.0")
+            implementation("androidx.datastore:datastore-preferences:1.2.0")
 
             implementation(compose.runtime)
             implementation(compose.foundation)

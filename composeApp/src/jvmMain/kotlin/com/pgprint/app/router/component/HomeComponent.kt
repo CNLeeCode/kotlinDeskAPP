@@ -25,15 +25,19 @@ import kotlinx.coroutines.launch
 
 
 interface HomeComponent {
+    val currentShopId: StateFlow<String>
     val printDeviceData: StateFlow<PrintDeviceData>
     fun getPrintDeviceData()
 }
 
 class DefaultHomeComponent (
     componentContext: ComponentContext,
+    shopId: String
 ): HomeComponent, ComponentContext by componentContext {
 
     private val scope = componentScope()
+
+    override val currentShopId = MutableStateFlow(shopId)
 
     override val printDeviceData = MutableStateFlow<PrintDeviceData>(PrintDeviceData.None)
 

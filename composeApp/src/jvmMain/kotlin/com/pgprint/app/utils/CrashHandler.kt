@@ -1,4 +1,5 @@
 package com.pgprint.app.utils
+import com.pgprint.app.BuildConfig.STORED_DIR
 import kotlinx.coroutines.CoroutineExceptionHandler
 import org.slf4j.LoggerFactory
 import java.awt.Desktop
@@ -9,7 +10,7 @@ import kotlin.system.exitProcess
 
 object CrashHandler {
     private val logger = LoggerFactory.getLogger("CrashHandler")
-    private val logPath = "${System.getProperty("user.home")}/.printer_app/logs"
+    private val logPath = "${System.getProperty("user.home")}/${STORED_DIR}/logs"
 
     /**
      * 初始化全局异常捕获
@@ -48,7 +49,6 @@ object CrashHandler {
     private fun showCrashDialog(throwable: Throwable, context: String) {
         val message = """
             程序遇到不可恢复的错误已崩溃。
-            
             位置: $context
             异常: ${throwable.javaClass.simpleName}
             详细: ${throwable.localizedMessage ?: "未知错误"}

@@ -11,6 +11,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.painterResource
@@ -28,6 +30,7 @@ fun RefreshButton(
 ) {
     Box(
         modifier = modifier
+            .pointerHoverIcon(PointerIcon.Hand)
             .size(containerSize)
             .clip(CircleShape)
             .clickable {
