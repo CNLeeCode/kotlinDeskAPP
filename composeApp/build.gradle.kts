@@ -78,24 +78,28 @@ kotlin {
 compose.desktop {
     application {
         mainClass = "com.pgprint.app.MainKt"
-
+        jvmArgs(
+            "-Dfile.encoding=UTF-8",
+            "-Dsun.jnu.encoding=UTF-8"
+        )
         nativeDistributions {
             targetFormats(TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "PG外卖打印小票"
+            packageName = "pgprinter"
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"
             description = "2025 BUTCOMPANY"
             windows {
+                menuGroup = "PG外卖打印"
                 shortcut = true
                 menu = true
                 dirChooser = true
                 upgradeUuid = "550e8400-e29b-41d4-a716-446655440000"
                 includeAllModules = true
-                console = true
+                // console = true
             }
             macOS {
                 bundleID = "com.pgprint.app"
-                packageName = "PG外卖打印小票"
+                packageName = "pgprinter"
                 console()
             }
         }
