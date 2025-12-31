@@ -32,7 +32,10 @@ import com.github.anastaciocintra.escpos.image.BitImageWrapper
 import com.github.anastaciocintra.escpos.image.Bitonal
 import com.github.anastaciocintra.escpos.image.CoffeeImageImpl
 import com.github.anastaciocintra.escpos.image.EscPosImage
+import com.pgprint.app.model.PrinterDevice
 import com.pgprint.app.print.PrintManager
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.consumeAsFlow
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.print.DocFlavor
@@ -42,11 +45,7 @@ import javax.usb.UsbHostManager
 import javax.usb.UsbHub
 import javax.usb.UsbInterface
 // 定义设备数据类
-data class PrinterDevice(
-    val name: String,
-    val type: String, // "驱动" 或 "串口"
-    val port: String = ""
-)
+
 
 fun getTestPrintData(): ByteArray {
     val baos = java.io.ByteArrayOutputStream()
@@ -194,17 +193,6 @@ fun PrinterCard(device: PrinterDevice) {
             Button(onClick = {
                 // 测试指令：ESC @ (初始化) + "Hello Printer" + 换行
                 statusMessage = "";
-                val psCommand = """
-                        %!PS
-                        /Courier findfont 20 scalefont setfont
-                        100 500 moveto
-                        (KMP PostScript Test) show
-                        showpage
-                    """.trimIndent()
-
-                // 确保使用标准 ASCII 或特定编码转换为字节
-                val data = psCommand.toByteArray(Charsets.US_ASCII)
-
                 val success = if (device.type == "系统驱动") {
                     PrintManager.printViaDriver(device.name, printImage())
                 } else {
