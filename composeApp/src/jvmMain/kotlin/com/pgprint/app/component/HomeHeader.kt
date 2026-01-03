@@ -1,15 +1,14 @@
 package com.pgprint.app.component
 
-import androidx.compose.foundation.Image
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -17,28 +16,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,11 +37,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import com.pgprint.app.model.PrintPlatform
+import com.pgprint.app.model.RequestResult
+import com.pgprint.app.model.UiState
 import com.pgprint.app.utils.AppColors
-import com.pgprint.app.utils.AppRequest
-import org.jetbrains.compose.resources.painterResource
-import pgprint.composeapp.generated.resources.Res
-import pgprint.composeapp.generated.resources.dy
 
 
 @Composable
@@ -70,28 +61,72 @@ fun HomeHeader(
 @Composable
 fun ChoosePrintDeviceList(
     modifier: Modifier = Modifier,
+    printPlatformState: UiState<RequestResult<List<PrintPlatform>>>,
+    checkedPrintPlatform: List<String>,
+    onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
 ) {
-    // val state = rememberLazyGridState()
-    val state = rememberLazyListState()
     Box(
         modifier = modifier.background(AppColors.WindowBackground).fillMaxSize(),
     ) {
-        LazyColumn(
+        Crossfade(
+            targetState = printPlatformState,
             modifier = Modifier.fillMaxSize(),
-            state = state
-        ) {
-            items(10) { x ->
-                ChoosePlatformItem(
-                    modifier = Modifier.height(40.dp)
-                )
+            animationSpec = tween(
+                durationMillis = 1000,
+                delayMillis = 500,
+                easing = LinearEasing
+            )
+        ) { state ->
+            when (state) {
+                is UiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        androidx.compose.material.Text(
+                            text = "异常：$state.message",
+                            color = AppColors.ErrorRed,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+                is UiState.Idle -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { }
+                }
+                is UiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            strokeWidth = 3.dp,
+                            color = AppColors.PrimaryColor,
+                            modifier = Modifier.size(24.dp).offset(y = (-10).dp)
+                        )
+                    }
+                }
+                is UiState.Success<RequestResult<List<PrintPlatform>>> -> {
+                    val printPlatform =  state.data
+                    printPlatform.data?.let { list ->
+                        val listState = rememberLazyListState()
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            state = listState
+                        ) {
+                            items(list,  key = { it.id }) { x ->
+                                ChoosePlatformItem(
+                                    platformTitle = x.label,
+                                    platformId = x.id,
+                                    platformImg = x.img,
+                                    checked = checkedPrintPlatform.contains(x.id),
+                                    onChange = onChangeCheckedPrintPlatform,
+                                )
+                            }
+                        }
+                        VerticalScrollbar(
+                            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                            adapter = rememberScrollbarAdapter(
+                                scrollState = listState
+                            )
+                        )
+                    }
+                }
             }
         }
-        VerticalScrollbar(
-            modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
-            adapter = rememberScrollbarAdapter(
-                scrollState = state
-            )
-        )
     }
 }
 
@@ -100,29 +135,34 @@ fun ChoosePrintDeviceList(
 @Composable
 fun ChoosePlatformItem(
     modifier: Modifier = Modifier,
-    title: String = "外卖平台外卖平台外卖平台外卖平台"
+    platformTitle: String = "",
+    platformImg: String = "",
+    platformId: String = "",
+    checked: Boolean = true,
+    onChange: (wmId: String) -> Unit,
 ) {
     CellItem(
-        modifier = modifier.fillMaxWidth().clickable {
-            println("clickable")
-        },
-        headlineContent = { Text(title, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = modifier,
+        headlineContent = { Text(platformTitle, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = {
-            Image(
-                painter = painterResource(Res.drawable.dy),
-                contentDescription = "platform name",
+            AsyncImage(
+                model = platformImg,
+                contentDescription = "brand image",
                 modifier = Modifier.size(20.dp)
             )
         },
         trailingContent = {
             Checkbox(
                 modifier = Modifier.size(12.dp),
-                checked = false,
+                checked = checked,
                 onCheckedChange = {
-                    println("onCheckedChange $it")
+                    onChange(platformId)
                 }
             )
         },
+        onClick = {
+            onChange(platformId)
+        }
     )
 }
 
@@ -149,7 +189,9 @@ fun ToolItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                if (title.isNotEmpty()) {
+                    Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                }
                 titleSuffix?.invoke()
             }
             Spacer(Modifier.fillMaxWidth().height(10.dp))

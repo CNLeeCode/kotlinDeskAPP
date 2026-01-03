@@ -26,6 +26,8 @@ import com.pgprint.app.router.RootContent
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.AppStrings
 import com.pgprint.app.utils.CrashHandler
+import com.pgprint.app.utils.DatabaseManager
+import com.pgprint.app.utils.DesktopTool
 import com.pgprint.app.utils.PersistentCache
 import com.pgprint.app.utils.Utils
 import io.ktor.client.request.head
@@ -33,7 +35,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import pgprint.composeapp.generated.resources.Res
+import pgprint.composeapp.generated.resources.cjwt
+import pgprint.composeapp.generated.resources.copyright
+import pgprint.composeapp.generated.resources.exit
+import pgprint.composeapp.generated.resources.file
+import pgprint.composeapp.generated.resources.log
+import pgprint.composeapp.generated.resources.setting
+import pgprint.composeapp.generated.resources.update
+import kotlin.coroutines.Continuation
 
 fun LifecycleOwner.componentScope(): CoroutineScope {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -66,18 +79,19 @@ fun main() = application {
         state = mainWindowState,
     ) {
         MenuBar {
-            Menu("文件", mnemonic = 'F') {
-                Item("新订单", onClick = { /* 执行逻辑 */ })
-                Item("设置", onClick = { /* 打开设置 */ })
+            Menu("菜单", mnemonic = 'F') {
+                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
                 Separator() // 分割线
-                Item("退出", onClick = ::exitApplication)
+                Item("退出", onClick = ::exitApplication , icon = painterResource(Res.drawable.exit))
             }
 
             Menu("帮助") {
-                Item("检查更新", onClick = { })
-                Item("错误日志", onClick = CrashHandler::onHandleOpenLogFolder)
-                Item("缓存地址", onClick = PersistentCache::openCatchDir)
-                Item("关于PG打印", onClick = { })
+                Item("常见问题", onClick = { DesktopTool.openBrowser("https://www.baidu.com") }, icon = painterResource(Res.drawable.cjwt))
+                Item("检查更新", onClick = { }, icon = painterResource(Res.drawable.update))
+                Item("错误日志", onClick = CrashHandler::onHandleOpenLogFolder, icon = painterResource(Res.drawable.log))
+                Item("缓存地址", onClick = PersistentCache::openCatchDir, icon = painterResource(Res.drawable.file))
+                Separator() // 分割线
+                Item("关于PG打印", onClick = { }, icon = painterResource(Res.drawable.copyright))
             }
         }
         CompositionLocalProvider(

@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.composeHotReload)
     kotlin("plugin.serialization") version "2.3.0"
     id("com.github.gmazzo.buildconfig") version "5.3.5"
+    id("app.cash.sqldelight") version "2.2.1"
 }
 
 buildConfig {
@@ -35,18 +36,23 @@ kotlin {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0-RC")
 
             // Ktor 核心
-            implementation("io.ktor:ktor-client-core:3.0.0")
+            implementation("io.ktor:ktor-client-core:3.3.2")
             // 推荐 JVM 引擎
-            implementation("io.ktor:ktor-client-okhttp:3.0.0")
+            implementation("io.ktor:ktor-client-okhttp:3.3.2")
             // 序列化（JSON 处理）
-            implementation("io.ktor:ktor-client-content-negotiation:3.0.0")
-            implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.0")
+            implementation("io.ktor:ktor-client-content-negotiation:3.3.2")
+            implementation("io.ktor:ktor-serialization-kotlinx-json:3.3.2")
             // LOG
-            implementation("io.ktor:ktor-client-logging:3.0.0")
+            implementation("io.ktor:ktor-client-logging:3.3.2")
 
             // datastore
             implementation("androidx.datastore:datastore:1.2.0")
             implementation("androidx.datastore:datastore-preferences:1.2.0")
+
+            //coil3 网络图片
+            implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+            //sqldelight
+            implementation("app.cash.sqldelight:runtime:2.2.1")
 
             implementation(compose.runtime)
             implementation(compose.foundation)
@@ -61,6 +67,14 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
+
+            // sqldelight 1. 驱动程序：桌面端（JVM）使用 JDBC 驱动
+            implementation("app.cash.sqldelight:sqlite-driver:2.2.1")
+            implementation("app.cash.sqldelight:coroutines-extensions-jvm:2.2.1")
+            // ./gradlew :composeApp:generateCommonMainAppDatabaseInterface 手动同步 sql表以及结构的创建
+
+            //coil3 网络图片
+            implementation("io.coil-kt.coil3:coil-network-okhttp:3.3.0") // Only available on Android/JVM.
             // 查询串口/USB
             implementation("com.fazecast:jSerialComm:2.10.4")
             implementation("org.usb4java:usb4java-javax:1.3.0")
@@ -76,7 +90,6 @@ kotlin {
         }
     }
 }
-
 
 compose.desktop {
     application {
@@ -98,7 +111,7 @@ compose.desktop {
                 dirChooser = true
                 upgradeUuid = "550e8400-e29b-41d4-a716-446655440000"
                 includeAllModules = true
-                // console = true
+                console = true
             }
             macOS {
                 bundleID = "com.pgprint.app"
@@ -108,3 +121,13 @@ compose.desktop {
         }
     }
 }
+
+sqldelight {
+    databases {
+        create("AppDatabase") {
+            packageName.set("com.pgprint.app.db") // 生成代码的包名
+            // srcDirs.setFrom("src/jvmMain/sqldelight")
+        }
+    }
+}
+

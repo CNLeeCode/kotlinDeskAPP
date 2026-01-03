@@ -1,0 +1,31 @@
+-- AppDatabase.sq
+
+-- 连接信息表
+CREATE TABLE ConnectionInfo (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dateText TEXT NOT NULL,           -- 日期 (例如: "2023-10-27")
+    createdAt INTEGER NOT NULL,       -- 10位时间戳
+    connectionDetail TEXT NOT NULL,    -- 连接信息字符串
+    textColor TEXT DEFAULT '#07c160' -- 文字颜色
+);
+
+-- 为日期字段增加索引
+-- 作用：极大加快按日期查询（如：查询某天的日志）和按日期批量删除的速度
+CREATE INDEX idx_connection_date ON ConnectionInfo(dateText);
+
+-- 插入数据
+insertConnection:
+INSERT INTO ConnectionInfo(dateText, createdAt, connectionDetail, textColor)
+VALUES (?, ?, ?, ?);
+
+-- 按日期查询
+selectByDate:
+SELECT * FROM ConnectionInfo WHERE dateText = ? ORDER BY createdAt DESC;
+
+-- 按日期删除（方便清理旧数据，有了索引此操作会非常快）
+deleteByDate:
+DELETE FROM ConnectionInfo WHERE dateText = ?;
+
+-- 清理某日期之前的所有旧数据
+deleteOlderThanDate:
+DELETE FROM ConnectionInfo WHERE dateText < ?;

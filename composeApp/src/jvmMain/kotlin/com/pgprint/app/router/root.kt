@@ -6,7 +6,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.arkivanov.decompose.ComponentContext
 import com.arkivanov.decompose.extensions.compose.stack.Children
 import com.arkivanov.decompose.extensions.compose.stack.animation.fade
@@ -14,30 +13,24 @@ import com.arkivanov.decompose.extensions.compose.stack.animation.stackAnimation
 import com.arkivanov.decompose.router.stack.ChildStack
 import com.arkivanov.decompose.router.stack.StackNavigation
 import com.arkivanov.decompose.router.stack.childStack
-import com.arkivanov.decompose.router.stack.push
 import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
 import com.pgprint.app.App
-import com.pgprint.app.BuildConfig
 import com.pgprint.app.Login
 import com.pgprint.app.componentScope
 import com.pgprint.app.router.component.DefaultHomeComponent
 import com.pgprint.app.router.component.DefaultLoginComponent
 import com.pgprint.app.router.component.HomeComponent
 import com.pgprint.app.router.component.LoginComponent
-import com.pgprint.app.utils.AppFlow
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.DataStored
-import com.pgprint.app.utils.PersistentCache
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.head
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
@@ -84,11 +77,22 @@ class DefaultRootComponent(
 
     private fun createChild(config: Config, context: ComponentContext): RootComponent.Child {
         return when (config) {
-            is Config.Login ->  RootComponent.Child.Login(DefaultLoginComponent(context, toHome = { shopId ->
-                saveCurrentShopId(shopId)
-                navigation.replaceCurrent(Config.Home(shopId))
-            } ))
-            is Config.Home -> RootComponent.Child.Home(DefaultHomeComponent(context, config.shopId))
+            is Config.Login ->  RootComponent.Child.Login(
+                DefaultLoginComponent(
+                    context,
+                    toHome = { shopId ->
+                    saveCurrentShopId(shopId)
+                        navigation.replaceCurrent(Config.Home(shopId))
+                    }
+                ))
+            is Config.Home -> RootComponent.Child.Home(
+                DefaultHomeComponent(
+                    context,
+                    shopId = config.shopId,
+                    toLogin = {
+                        navigation.replaceCurrent(Config.Login)
+                    }
+                ))
         }
     }
 

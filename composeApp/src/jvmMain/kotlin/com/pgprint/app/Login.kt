@@ -39,17 +39,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pgprint.app.router.LocalCurrentShopId
 import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.LoginComponent
 import com.pgprint.app.utils.AppColors
-import com.pgprint.app.utils.AppFlow
 import com.pgprint.app.utils.DataStored
-import com.pgprint.app.utils.PersistentCache
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Res
 import pgprint.composeapp.generated.resources.undraw_winter_walk
