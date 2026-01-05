@@ -49,7 +49,7 @@ import pgprint.composeapp.generated.resources.update
 import kotlin.coroutines.Continuation
 
 fun LifecycleOwner.componentScope(): CoroutineScope {
-    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     lifecycle.subscribe(onDestroy = { scope.cancel() })
     return scope
 }

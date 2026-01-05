@@ -132,14 +132,14 @@ fun PrinterScannerScreen() {
         // 1. 扫描驱动打印机 (USB-A/Type-C 只要装了驱动都能搜到)
         val printServices = PrintServiceLookup.lookupPrintServices(DocFlavor.BYTE_ARRAY.AUTOSENSE, null)
         printServices.forEach {
-            newList.add(PrinterDevice(it.name, "系统驱动"))
+            // newList.add(PrinterDevice(it.name, "系统驱动"))
         }
 
         // 2. 扫描串口设备 (Type-C 转串口或工业打印机直连)
         val serialPorts = SerialPort.getCommPorts()
         serialPorts.forEach {
             print(it.descriptivePortName)
-            newList.add(PrinterDevice(it.descriptivePortName, "串口/Type-C", it.systemPortName))
+           //  newList.add(PrinterDevice(it.descriptivePortName, "串口/Type-C", it.systemPortName))
         }
 
         devices = newList
@@ -186,19 +186,19 @@ fun PrinterCard(device: PrinterDevice) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(text = device.name, style = MaterialTheme.typography.bodySmall)
-                Text(text = "类型: ${device.type} ${if (device.port.isNotEmpty()) "[${device.port}]" else ""}",
-                    style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color.Gray)
+//                Text(text = device.name, style = MaterialTheme.typography.bodySmall)
+//                Text(text = "类型: ${device.type} ${if (device.port.isNotEmpty()) "[${device.port}]" else ""}",
+//                    style = MaterialTheme.typography.bodySmall, color = androidx.compose.ui.graphics.Color.Gray)
             }
             Button(onClick = {
                 // 测试指令：ESC @ (初始化) + "Hello Printer" + 换行
                 statusMessage = "";
-                val success = if (device.type == "系统驱动") {
-                    PrintManager.printViaDriver(device.name, printImage())
-                } else {
-                    PrintManager.printViaSerial(device.port, printImage())
-                }
-                statusMessage = if (success) "打印指令已发送" else "连接失败"
+//                val success = if (device.type == "系统驱动") {
+//                    PrintManager.printViaDriver(device.name, printImage())
+//                } else {
+//                    PrintManager.printViaSerial(device.port, printImage())
+//                }
+//                statusMessage = if (success) "打印指令已发送" else "连接失败"
             }) {
                 Text("测试打印")
             }

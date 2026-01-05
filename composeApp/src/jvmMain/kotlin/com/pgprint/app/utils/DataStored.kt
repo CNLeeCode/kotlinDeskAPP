@@ -5,13 +5,11 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import com.pgprint.app.BuildConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.toList
-import kotlinx.serialization.decodeFromString
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 import okio.Path.Companion.toOkioPath
 import java.io.File
 
@@ -34,6 +32,7 @@ object DataStored  {
 
     val SHOP_ID = stringPreferencesKey("shopid")
     val CHECKED_PRINT_PLATFORM = stringPreferencesKey("checked_platform")
+    val CHECKED_PRINTER_NAME = stringPreferencesKey("checked_printer_name")
 
     val shopIdFlow : Flow<String> = stored.data.map {
         it[SHOP_ID] ?: ""
@@ -45,28 +44,44 @@ object DataStored  {
             ?: emptyList()
     }
 
+    val currentCheckedPrinter: Flow<String> = stored.data.map { prefs ->
+        prefs[CHECKED_PRINTER_NAME] ?: ""
+    }
+
     suspend fun saveShopId(shopId: String) {
         stored.edit { it ->
             it[SHOP_ID] = shopId
         }
     }
 
-    suspend fun saveCheckedPlatform(wmId: String) {
-        stored.edit { prefs ->
-            val currentList =
-                prefs[CHECKED_PRINT_PLATFORM]
-                    ?.let { Json.decodeFromString<List<String>>(it) }
-                    ?: emptyList()
-
-            val newList =
-                if (wmId in currentList) {
-                    currentList - wmId   // 已存在 → 移除
+    suspend fun saveCurrentCheckedPrinter(printName: String) {
+        withContext(Dispatchers.IO) {
+            stored.edit { prefs ->
+                if (prefs[CHECKED_PRINTER_NAME] == printName) {
+                    prefs[CHECKED_PRINTER_NAME] = ""
                 } else {
-                    currentList + wmId   // 不存在 → 添加
+                    prefs[CHECKED_PRINTER_NAME] = printName
                 }
+            }
+        }
+    }
 
-            prefs[CHECKED_PRINT_PLATFORM] =
-                Json.encodeToString(newList)
+    suspend fun saveCheckedPlatform(wmId: String) {
+        withContext(Dispatchers.IO) {
+            stored.edit { prefs ->
+                val currentList =
+                    prefs[CHECKED_PRINT_PLATFORM]
+                        ?.let { Json.decodeFromString<List<String>>(it) }
+                        ?: emptyList()
+                val newList =
+                    if (wmId in currentList) {
+                        currentList - wmId   // 已存在 → 移除
+                    } else {
+                        currentList + wmId   // 不存在 → 添加
+                    }
+                prefs[CHECKED_PRINT_PLATFORM] =
+                    Json.encodeToString(newList)
+            }
         }
     }
 }

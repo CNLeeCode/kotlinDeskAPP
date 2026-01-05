@@ -11,11 +11,11 @@ object PrintManager {
     /**
      * 针对“系统驱动”类型的打印
      */
-    fun printViaDriver(printerName: String, data: ByteArray): Boolean {
+     fun printViaDriver(printerName: String, data: ByteArray): Boolean {
         return try {
             val flavor = DocFlavor.BYTE_ARRAY.AUTOSENSE
             val services = PrintServiceLookup.lookupPrintServices(flavor, null)
-            val service = services.find { it.name.contains(printerName, ignoreCase = true) }
+            val service = services.firstOrNull { it.name.contains(printerName, ignoreCase = true) }
                 ?: return false
 
             val job = service.createPrintJob()

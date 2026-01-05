@@ -1,12 +1,28 @@
 package com.pgprint.app.utils
 
+import com.pgprint.app.model.RequestResult
+import com.pgprint.app.model.ShopPrintOrder
+import com.pgprint.app.model.ShopPrintOrderDetail
+import com.pgprint.app.model.ShopPrintOrderItem
+import io.ktor.client.call.body
+import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.Parameters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -18,7 +34,6 @@ object PrintTask {
     private val activeJobs = ConcurrentHashMap<String, Job>()
     // 存储已打印的订单号，防止重复打印 (建议生产环境持久化)
     private val printedOrderIds = mutableSetOf<String>()
-
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
     val platformIds = _platformIds.asStateFlow()
@@ -43,12 +58,15 @@ object PrintTask {
     }
 
     private fun startPollingTask(platformId: String, shopId: String = "") {
+        if (activeJobs.containsKey(platformId)) {
+            println("平台 $platformId 已经在运行")
+            return
+        }
         val job = scope.launch(Dispatchers.IO) {
             println("开始监听平台: $platformId")
-            while (isActive) {
+            while (isActive) {62900
                 try {
-
-                    executePrintCycle(platformId)
+                    executePrintCycle(platformId, shopId)
                 } catch (e: Exception) {
                     println("平台 $platformId 执行出错: ${e.message}")
                     delay(5000) // 出错后等待一段时间再重试
@@ -78,25 +96,66 @@ object PrintTask {
         _platformIds.value = emptySet()
     }
 
-    private suspend fun executePrintCycle(platformId: String) {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun executePrintCycle(platformId: String, shopId: String = "") {
         // 1. 获取待打印订单
-        val pendingOrders = fetchPendingOrders(platformId)
-
-        for (order in pendingOrders) {
-            // 2. 防重检查
-            if (printedOrderIds.contains(order)) continue
-
-            // 3. 根据订单获取商品详情
-            val items = fetchOrderItems(order)
-
-            // 4. 打印数据
-            val success = printData(order, items)
-
-            if (success) {
-                printedOrderIds.add(order)
-                // 限制内存占用：如果集合过大，可以清理早期数据
-                if (printedOrderIds.size > 1000) printedOrderIds.remove(printedOrderIds.first())
+        flow {
+            val res = AppRequest.client.post("getDaySeq") {
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("wmid", platformId)
+                            append("shopid", shopId)
+                            append("secret", "panyishigedashuaige")
+                        }
+                    )
+                )
+            }.body<ShopPrintOrder>()
+            val items = if (res.code == 200 && res.data.isNotEmpty()) {
+                res.data
+            } else {
+                emptyList<ShopPrintOrderItem>()
             }
+            emit(items)
+        }.map { items ->
+            val newItems = items.filter { it.orderId !in printedOrderIds }
+            printedOrderIds.addAll(newItems.map { it.orderId })
+            newItems
+        }.flowOn(Dispatchers.IO).flatMapLatest { orderIds ->
+            if (orderIds.isNotEmpty()) {
+                flow {
+                    val orderDetail =  AppRequest.client.post("getOrderList") {
+                        setBody(
+                            FormDataContent(
+                                Parameters.build {
+                                    append("wmid", platformId)
+                                    append("shopid", shopId)
+                                    append("secret", "panyishigedashuaige")
+                                    orderIds.forEach {
+                                        append("orderid_list[]", it.orderId)
+                                    }
+                                }
+                            )
+                        )
+                    }.body<RequestResult<List<ShopPrintOrderDetail>>>()
+                    val items = if (orderDetail.code == 200 && orderDetail.data?.isNotEmpty() == true) {
+                        orderDetail.data
+                    } else {
+                        emptyList<ShopPrintOrderDetail>()
+                    }
+                    emit(items)
+                }.flowOn(Dispatchers.IO)
+            } else {
+               flow {
+                   emit( emptyList<ShopPrintOrderDetail>())
+               }
+            }
+        }.catch {
+            emit( emptyList<ShopPrintOrderDetail>())
+        }.filter {
+            it.isNotEmpty()
+        }.collect {
+            println( "这里开始打印：${it}")
         }
     }
 

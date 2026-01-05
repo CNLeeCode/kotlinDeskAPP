@@ -1,5 +1,6 @@
 package com.pgprint.app.router.component
 
+import androidx.compose.runtime.remember
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.arkivanov.decompose.ComponentContext
@@ -7,6 +8,7 @@ import com.pgprint.app.componentScope
 import com.pgprint.app.model.ConnectionInfo
 import com.pgprint.app.model.PrintDeviceData
 import com.pgprint.app.model.PrintPlatform
+import com.pgprint.app.model.PrinterTarget
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.UiState
 import com.pgprint.app.utils.AppRequest
@@ -16,16 +18,16 @@ import com.pgprint.app.utils.UsbDevices
 import com.pgprint.app.utils.Utils
 import io.ktor.client.call.body
 import io.ktor.client.request.get
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -40,15 +42,14 @@ import java.time.format.DateTimeFormatter
 
 interface HomeComponent {
     val currentShopId: StateFlow<String>
-    val printDeviceData: StateFlow<PrintDeviceData>
     val callPrintPlatform: MutableSharedFlow<Unit>
     val printPlatform: StateFlow<UiState<RequestResult<List<PrintPlatform>>>>
     val checkedPrintPlatform: StateFlow<List<String>>
     val HistoryLog: StateFlow<List<ConnectionInfo>>
 
-    fun getPrintDeviceData()
     fun refreshPrintPlatform()
     fun toLoginPage()
+    fun saveCurrentCheckedPrinter (printName: String)
     fun onChangeCheckedPrintPlatform(wmId: String)
 }
 
@@ -61,11 +62,9 @@ class DefaultHomeComponent (
     val currentDate: LocalDate = LocalDate.now()
     val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val currentDateFormat: String = currentDate.format(formatter)
-    private val scope = componentScope()
+    private val scope = componentContext.componentScope()
     // 当前门店ID
     override val currentShopId = MutableStateFlow(shopId)
-    // 打印设备类别
-    override val printDeviceData = MutableStateFlow<PrintDeviceData>(PrintDeviceData.None)
 
     override val callPrintPlatform = MutableSharedFlow<Unit>(1)
 
@@ -111,6 +110,20 @@ class DefaultHomeComponent (
         initialValue = UiState.Idle
     )
 
+
+    override fun saveCurrentCheckedPrinter (printName: String) {
+        scope.launch(Dispatchers.IO) {
+            DataStored.saveCurrentCheckedPrinter(printName)
+        }
+    }
+
+    override fun onChangeCheckedPrintPlatform(wmId: String) {
+        scope.launch(Dispatchers.IO) {
+            DataStored.saveCheckedPlatform(wmId)
+        }
+    }
+
+
     suspend fun insertNewToConnectionInfo(message: String, color: String = "#07c160") {
         try {
             withContext(Dispatchers.IO) {
@@ -126,12 +139,6 @@ class DefaultHomeComponent (
         }
     }
 
-    override fun onChangeCheckedPrintPlatform(wmId: String) {
-        scope.launch(Dispatchers.IO) {
-            DataStored.saveCheckedPlatform(wmId)
-        }
-    }
-
     override fun refreshPrintPlatform() {
         callPrintPlatform.tryEmit(Unit)
     }
@@ -140,35 +147,5 @@ class DefaultHomeComponent (
         toLogin()
     }
     // 获取打印设备
-    override fun getPrintDeviceData() {
-
-        if (printDeviceData.value is PrintDeviceData.Loading ) {
-            return
-        }
-        if (printDeviceData.value !is PrintDeviceData.Loading ) {
-            printDeviceData.value = PrintDeviceData.Loading
-        }
-        scope.launch {
-            flow {
-                val devices = UsbDevices.getDevicesList()
-                emit(Result.success(devices))
-            }
-            .flowOn(Dispatchers.IO)
-            .catch {
-                emit(Result.failure(it))
-            }
-            .collectLatest { result ->
-                result.onSuccess {
-                    printDeviceData.value = PrintDeviceData.Success(data = it)
-                }.onFailure {
-                    printDeviceData.value = PrintDeviceData.Error(message = it.message ?: "获取设备失败")
-                }
-            }
-        }
-    }
-
-    init {
-        getPrintDeviceData()
-    }
 
 }

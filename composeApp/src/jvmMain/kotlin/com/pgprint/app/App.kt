@@ -38,64 +38,50 @@ import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.HomeComponent
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.AppStrings
+import com.pgprint.app.utils.DataStored
 import com.pgprint.app.utils.DatabaseManager
+import com.pgprint.app.utils.PrintDevice
 import com.pgprint.app.utils.PrintTask
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
 @Preview
 fun App(component: HomeComponent, modifier: Modifier = Modifier) {
 
-    val printDeviceData by component.printDeviceData.collectAsState()
+    // val uiScope = rememberCoroutineScope()
+    val printDeviceData by PrintDevice.printDeviceData.collectAsState()
     val shopId by component.currentShopId.collectAsState()
     val localCurrentShopId =  LocalCurrentShopId.current
     val localNetworkStatus = LocalNetworkStatus.current
     val printPlatform by component.printPlatform.collectAsState()
     val checkedPrintPlatform by component.checkedPrintPlatform.collectAsState()
     val historyLog by component.HistoryLog.collectAsState()
-
+    val currentCheckedPrinter by PrintDevice.currentCheckedPrinterName.collectAsState()
     val currentPrintPlatformIds by PrintTask.platformIds.collectAsState()
+    val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
 
-    LaunchedEffect(checkedPrintPlatform) {
-        println("checkedPrintPlatform ${checkedPrintPlatform.toString()}")
-        PrintTask.updatePlatforms(checkedPrintPlatform.toSet(), "2309")
-
+    LaunchedEffect(checkedPrintPlatform, currentCheckedPrinterDevice) {
+        if (
+            currentCheckedPrinterDevice != null && shopId.isNotEmpty()
+        ) {
+            PrintTask.updatePlatforms(checkedPrintPlatform.toSet(), shopId)
+        }
     }
 
+    LaunchedEffect(currentCheckedPrinterDevice) {
+        if (currentCheckedPrinterDevice == null) {
+            PrintTask.stopPollingTask()
+        }
+    }
 
     LaunchedEffect(currentPrintPlatformIds) {
         println("currentPrintPlatformIds $currentPrintPlatformIds")
     }
 
-
-
     LaunchedEffect(localCurrentShopId) {
-       //  println("localCurrentShopId: $localCurrentShopId")
-       //  component.callPrintPlatform.tryEmit(Unit)
         component.refreshPrintPlatform()
-    }
-
-    LaunchedEffect(printPlatform) {
-        println("printPlatform" + printPlatform.toString())
-        when(printPlatform) {
-            is UiState.Error -> {
-                println("Error")
-            }
-            is UiState.Idle -> {
-                println("Idle")
-            }
-            is UiState.Loading -> {
-                println("Loading")
-            }
-            is UiState.Success<*> -> {
-                println("Success")
-            }
-        }
-    }
-
-    LaunchedEffect(true) {
-       // val db = DatabaseManager.database
-       //  val connQueries = db.connectionInfoQueries
+        PrintDevice.getPrintDeviceData()
     }
 
     AppTheme {
@@ -107,9 +93,11 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
             printPlatformState = printPlatform,
             historyLog = historyLog,
             checkedPrintPlatform = checkedPrintPlatform,
-            getPrintDeviceData = component::getPrintDeviceData,
+            currentCheckedPrinter = currentCheckedPrinter,
+            getPrintDeviceData = PrintDevice::getPrintDeviceData,
             refreshPrintPlatform = component::refreshPrintPlatform,
-            onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform
+            onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
+            onChangePrinter = component::saveCurrentCheckedPrinter,
         )
     }
 }
@@ -123,9 +111,11 @@ fun LoggedView(
     printPlatformState: UiState<RequestResult<List<PrintPlatform>>>,
     checkedPrintPlatform: List<String>,
     historyLog: List<ConnectionInfo>,
+    currentCheckedPrinter: String,
     getPrintDeviceData: () -> Unit,
     refreshPrintPlatform: () -> Unit,
     onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
+    onChangePrinter: (String) -> Unit,
 ) {
     Column(
         modifier = modifier.background(AppColors.WindowBackground).safeContentPadding().fillMaxSize(),
@@ -166,6 +156,23 @@ fun LoggedView(
                 modifier = Modifier.fillMaxWidth().height(260.dp)
             ) {
                 val toolItemModifier = Modifier.weight(1f)
+
+                ToolItem(
+                    modifier = toolItemModifier,
+                    title = AppStrings.choosePrintDeciveTitle,
+                    titleSuffix = {
+                        RefreshButton(
+                            onClick = getPrintDeviceData
+                        )
+                    }
+                ) {
+                    UsbView(
+                        modifier = toolItemModifier,
+                        state = printDeviceData,
+                        currentCheckedPrinter = currentCheckedPrinter,
+                        onChangePrinter = onChangePrinter,
+                    )
+                }
                 ToolItem(
                     modifier = toolItemModifier,
                     title = AppStrings.choosePlatformTitle,
@@ -185,20 +192,6 @@ fun LoggedView(
                         printPlatformState = printPlatformState,
                         checkedPrintPlatform = checkedPrintPlatform,
                         onChangeCheckedPrintPlatform = onChangeCheckedPrintPlatform,
-                    )
-                }
-                ToolItem(
-                    modifier = toolItemModifier,
-                    title = AppStrings.choosePrintDeciveTitle,
-                    titleSuffix = {
-                        RefreshButton(
-                            onClick = getPrintDeviceData
-                        )
-                    }
-                ) {
-                    UsbView(
-                        modifier = toolItemModifier,
-                        state = printDeviceData
                     )
                 }
                 ToolItem(
