@@ -1,0 +1,33 @@
+include required("build/conveyor.conf")
+
+app {
+  display-name = "PG Printer"
+  fsname = "pgprinter"
+  rdns-name = "com.pgprint.app"
+  vendor = "BUTCOMPANY"
+
+  // 图标：找一个 1024x1024 的 PNG 放在根目录 icons 文件夹
+  #icons = "icons/icon.png"
+
+  jvm {
+    gui.main-class = "com.pgprint.app.MainKt"
+
+    // 彻底解决 Windows 乱码问题
+    system-properties {
+      file.encoding = UTF-8
+      sun.jnu.encoding = UTF-8
+    }
+  }
+
+  windows {
+    // 对应你之前的 upgradeUuid
+    uuid = "550e8400-e29b-41d4-a716-446655440000"
+
+    // 是否显示控制台 (调试时建议设为 true)
+    console = true
+
+    // 自动更新配置 (如果没有服务器可以先注释掉)
+    //
+    # updates = "https://example.com/downloads"
+  }
+}
