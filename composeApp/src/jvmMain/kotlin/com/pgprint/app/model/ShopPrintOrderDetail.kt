@@ -9,6 +9,9 @@ data class ShopPrintOrderDetail(
     @SerialName("day_seq")
     val daySeq: String,
 
+    @SerialName("orderid")
+    val orderId: String,
+
     @SerialName("shop_name")
     val shopName: String,
 
@@ -19,6 +22,10 @@ data class ShopPrintOrderDetail(
     val billingTime: String,
 
     @SerialName("address")
-    val address: String,
+    val address: String = "",
 
+    val remarks: String = "",
+
+    @SerialName("jh_temperature")
+    val temperature: String = ""
 )

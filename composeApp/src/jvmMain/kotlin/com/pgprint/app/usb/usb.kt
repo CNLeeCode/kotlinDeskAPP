@@ -34,6 +34,7 @@ import com.github.anastaciocintra.escpos.image.CoffeeImageImpl
 import com.github.anastaciocintra.escpos.image.EscPosImage
 import com.pgprint.app.model.PrinterDevice
 import com.pgprint.app.print.PrintManager
+import com.pgprint.app.utils.EscPosPrinter
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
 import java.awt.image.BufferedImage
@@ -74,39 +75,127 @@ fun text2byteArray(text: String): ByteArray  {
     return text.toByteArray(charset("GBK"))
 }
 
+fun divider(): ByteArray {
+    return text2byteArray("--------------------------------\n")
+}
+
+fun lineLR(left: String, right: String, width: Int = 32): ByteArray {
+    val leftBytes = left.toByteArray(charset("GBK"))
+    val rightBytes = right.toByteArray(charset("GBK"))
+    val spaceCount = width - leftBytes.size - rightBytes.size
+    return text2byteArray(left + " ".repeat(spaceCount.coerceAtLeast(1)) + right + "\n")
+}
+
+
+fun printImage2(): ByteArray {
+    val out = ByteArrayOutputStream()
+    val printer = EscPosPrinter(
+        output = out,
+        paperWidth = EscPosPrinter.WIDTH_58
+    )
+    printer.init()
+
+    /* ===== 顶部状态 ===== */
+    /* ===== 顶部状态 ===== */
+    printer.center()
+    /* ===== 大号订单号 ===== */
+    printer.doubleSize(true)
+    printer.scaleTextSize(3,3)
+    printer.writeText("#130\n")
+    printer.doubleSize(false)
+    /* ===== 平台 / 门店 ===== */
+    printer.bold(true)
+    printer.feed(1)
+    printer.scaleTextSize(2,2)
+    printer.center()
+    printer.writeText("美团闪购\n", Style().setJustification(EscPosConst.Justification.Center))
+    printer.bold(false)
+    printer.feed(1)
+    printer.scaleTextSize(1,1)
+    printer.center()
+    printer.writeText("比优特超市（市府大路店）\n", Style().setJustification(EscPosConst.Justification.Center))
+    printer.writeText("用户联", Style().setJustification(EscPosConst.Justification.Center))
+    /* ===== 条形码 ===== */
+    printer.barcode("2401939050332732270")
+    printer.center()
+    printer.writeText("2401939050332732270", Style().setJustification(EscPosConst.Justification.Center))
+    printer.feed(1)
+    printer.left()
+    printer.divider()
+    /* ===== 订单信息 ===== */
+    printer.writeText("订单号：2401939050332732270\n")
+    printer.writeText("立即送达  时间：1/6 14:20\n")
+    printer.writeText("下单时间：1月6日13:30\n")
+    printer.writeText("收件人：刘女士\n")
+    printer.writeText("电话：13019365834,8265   133****\n")
+    printer.writeText("*4500\n")
+    printer.writeText("地址：为保护隐私地址已隐藏，可前\n")
+    printer.writeText("往APP查看详情\n")
+
+    printer.divider()
+
+    /* ===== 备注 ===== */
+    printer.writeText("备注：【如遇缺货】：缺货时电话与我沟通\n")
+
+    printer.divider()
+
+    /* ===== 商品表头 ===== */
+    printer.writeText("商品  数量            单价  金额")
+    printer.feed(1)
+    printer.divider()
+    printer.writeText("1、象牛特仑苏纯牛奶250ml*12【比优特精选 整箱 高端 早餐优选】")
+    printer.feed(1)
+    printer.writeText("9987767987")
+    printer.feed(1)
+    /* ===== 商品 ===== */
+    printer.product(
+        name = "  ",
+        qty = "X1",
+        total = "53.47"
+    )
+    printer.feed(1)
+    printer.divider()
+
+    /* ===== 金额汇总 ===== */
+    printer.lineLR("商品合计", "X1  53.47")
+    printer.lineLR("配送费", "4.50")
+    printer.lineLR("包装费", "0.00")
+    printer.lineLR("优惠金额", "17.57")
+
+    printer.divider()
+
+    printer.bold(true)
+    printer.lineLR("实付金额", "41.60")
+    printer.bold(false)
+
+    /* ===== 底部提示 ===== */
+    printer.writeText("\n亲，如果您不满意，请联系我们，我们\n")
+    printer.writeText("会服务到您满意为止！如果您满意，\n")
+    printer.writeText("请小小鼓励我们一下，奖励我们五星好评哦！\n")
+    printer.writeText("我们的客服电话：155 6601 2733\n")
+
+    /* ===== 结束 ===== */
+    printer.feed(5)
+    printer.cut()
+    printer.close()
+
+    return out.toByteArray()
+}
+
+
+
 
 fun printImage(): ByteArray {
     val out = ByteArrayOutputStream()
     val escpos = EscPos(out)
 
     // 1. 定义样式
-    val headerStyle = Style()
-        .setFontSize(Style.FontSize._2, Style.FontSize._2) // 2倍大小
-        .setJustification(EscPosConst.Justification.Center)
-        .setBold(true)
 
-    val subHeaderStyle = Style()
-        .setJustification(EscPosConst.Justification.Center)
-        .setBold(true)
-
-    // 2. 打印头部内容
-    val title = text2byteArray("#12 美团外卖\n")
-    escpos.write( title, 0, title.size ).setStyle(headerStyle)
-    val shopName = text2byteArray("#12 美团外卖\n")
-    escpos.write(shopName, 0, shopName.size).setStyle(subHeaderStyle)
-    escpos.feed(5)
-    // 7. 插入二维码（内置指令方式）
-    escpos.write(byteArrayOf(0x1B, 0x40), 0, 2)
-    val qrCode = QRCode()
-    qrCode.setSize(10) // 设置二维码大小 (1-16)
-    qrCode.setJustification(EscPosConst.Justification.Center)
-    escpos.write(qrCode, "https://waimai.meituan.com/order/12345")
-
-    val subHeader = text2byteArray("\n扫码查询订单进度\n")
-    escpos.write(subHeader, 0, subHeader.size,).setStyle(subHeaderStyle)
-
-    // 8. 结尾走纸并切纸
-    escpos.feed(5)
+    val barCode = BarCode()
+    barCode.setJustification(EscPosConst.Justification.Center)
+    barCode.setBarCodeSize(70, 250)
+    escpos.write(barCode, "2401939050332732270", )
+    escpos.feed(2)
     escpos.cut(EscPos.CutMode.FULL)
     escpos.close()
 

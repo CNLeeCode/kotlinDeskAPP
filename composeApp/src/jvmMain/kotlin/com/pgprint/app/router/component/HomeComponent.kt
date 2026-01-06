@@ -126,7 +126,7 @@ class DefaultHomeComponent (
 
     suspend fun insertNewToConnectionInfo(message: String, color: String = "#07c160") {
         try {
-            withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO.limitedParallelism(1)) {
                 DatabaseManager.database.connectionInfoQueries.insertConnection(
                     dateText = currentDateFormat,
                     createdAt = System.currentTimeMillis() / 1000,

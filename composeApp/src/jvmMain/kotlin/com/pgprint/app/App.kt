@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,15 +34,22 @@ import com.pgprint.app.model.PrintDeviceData
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.UiState
+import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.router.LocalCurrentShopId
 import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.HomeComponent
+import com.pgprint.app.usb.getTestPrintData
+import com.pgprint.app.usb.printImage
+import com.pgprint.app.usb.printImage2
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.AppStrings
 import com.pgprint.app.utils.DataStored
 import com.pgprint.app.utils.DatabaseManager
 import com.pgprint.app.utils.PrintDevice
 import com.pgprint.app.utils.PrintTask
+import com.pgprint.app.utils.PrintTemplate
+import io.ktor.utils.io.core.toByteArray
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -49,7 +57,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Preview
 fun App(component: HomeComponent, modifier: Modifier = Modifier) {
 
-    // val uiScope = rememberCoroutineScope()
+    val uiScope = rememberCoroutineScope()
     val printDeviceData by PrintDevice.printDeviceData.collectAsState()
     val shopId by component.currentShopId.collectAsState()
     val localCurrentShopId =  LocalCurrentShopId.current
@@ -60,6 +68,7 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
     val currentCheckedPrinter by PrintDevice.currentCheckedPrinterName.collectAsState()
     val currentPrintPlatformIds by PrintTask.platformIds.collectAsState()
     val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
+    val printQueueFlow = PrintTask.printQueueFlow
 
     LaunchedEffect(checkedPrintPlatform, currentCheckedPrinterDevice) {
         if (
@@ -73,10 +82,13 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
         if (currentCheckedPrinterDevice == null) {
             PrintTask.stopPollingTask()
         }
-    }
+        currentCheckedPrinterDevice?.let { device ->
+            printQueueFlow.collect { data ->
+                print("接收并且开始打印 $data")
+                PrinterManager.print(device, PrintTemplate.templateV1(data))
 
-    LaunchedEffect(currentPrintPlatformIds) {
-        println("currentPrintPlatformIds $currentPrintPlatformIds")
+            }
+        }
     }
 
     LaunchedEffect(localCurrentShopId) {
@@ -98,6 +110,13 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
             refreshPrintPlatform = component::refreshPrintPlatform,
             onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
             onChangePrinter = component::saveCurrentCheckedPrinter,
+            onClickPrintTest = {
+                uiScope.launch {
+                    currentCheckedPrinterDevice?.let {
+                        PrinterManager.print(it, printImage2())
+                    }
+                }
+            }
         )
     }
 }
@@ -116,6 +135,7 @@ fun LoggedView(
     refreshPrintPlatform: () -> Unit,
     onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
     onChangePrinter: (String) -> Unit,
+    onClickPrintTest: () -> Unit,
 ) {
     Column(
         modifier = modifier.background(AppColors.WindowBackground).safeContentPadding().fillMaxSize(),
@@ -205,7 +225,11 @@ fun LoggedView(
                 ToolItem(
                     modifier = toolItemModifier,
                 ) {
-                    Text("ToolItem")
+                    Button(
+                        onClick = onClickPrintTest
+                    ) {
+                        Text("打印测试")
+                    }
                 }
             }
         }

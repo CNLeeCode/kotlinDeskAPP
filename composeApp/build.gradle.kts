@@ -68,6 +68,8 @@ kotlin {
         }
         jvmMain.dependencies {
 
+            //zxing
+            implementation("com.google.zxing:core:3.5.2")
             // sqldelight 1. 驱动程序：桌面端（JVM）使用 JDBC 驱动
             implementation("app.cash.sqldelight:sqlite-driver:2.2.1")
             implementation("app.cash.sqldelight:coroutines-extensions-jvm:2.2.1")

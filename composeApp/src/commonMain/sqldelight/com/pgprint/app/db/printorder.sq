@@ -1,0 +1,28 @@
+-- AppDatabase.sq
+
+-- 连接信息表
+CREATE TABLE printed_order (
+    platform_id TEXT NOT NULL,
+    order_id TEXT NOT NULL,
+    day_seq TEXT NOT NULL,
+    date TEXT NOT NULL,
+    PRIMARY KEY(platform_id, order_id)
+);
+
+CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date);
+-- 插入数据
+insertConnection:
+INSERT OR IGNORE INTO printed_order(platform_id, order_id, day_seq, date)
+VALUES (?, ?, ?, ?);
+
+-- 按日期查询
+selectByDate:
+SELECT * FROM printed_order WHERE date = ? ORDER BY day_seq ASC;
+
+-- 按日期删除（方便清理旧数据，有了索引此操作会非常快）
+deleteByDate:
+DELETE FROM printed_order WHERE date = ?;
+
+-- 清理某日期之前的所有旧数据
+deleteOlderThanDate:
+DELETE FROM printed_order WHERE date < ?;

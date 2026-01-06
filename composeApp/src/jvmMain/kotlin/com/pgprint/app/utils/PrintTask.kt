@@ -12,28 +12,39 @@ import io.ktor.http.Parameters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 
 object PrintTask {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
+    val dbDispatcher = Dispatchers.IO.limitedParallelism(1)
+    private val printQueue = Channel<ShopPrintOrderDetail>(capacity = 9999)
+    val printQueueFlow =  printQueue.receiveAsFlow()
     // 存储当前正在运行的任务 Job
     private val activeJobs = ConcurrentHashMap<String, Job>()
     // 存储已打印的订单号，防止重复打印 (建议生产环境持久化)
-    private val printedOrderIds = mutableSetOf<String>()
+    private val printedOrderIds = MutableStateFlow<Map<String, MutableMap<String, ShopPrintOrderItem>>>(emptyMap())
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
     val platformIds = _platformIds.asStateFlow()
@@ -66,13 +77,19 @@ object PrintTask {
             println("开始监听平台: $platformId")
             while (isActive) {62900
                 try {
-                    executePrintCycle(platformId, shopId)
+                    val printDetails = executePrintCycle2(platformId, shopId)
+                    if (printDetails.isNotEmpty()) {
+                        for (item in printDetails) {
+                            printQueue.send(item)
+                        }
+                        println("打印订单信息: $platformId : $printDetails")
+                    }
                 } catch (e: Exception) {
                     println("平台 $platformId 执行出错: ${e.message}")
                     delay(5000) // 出错后等待一段时间再重试
                 }
                 // 每轮任务执行完，等待一小段时间再进入下一轮（避免请求过频）
-                delay(2000)
+                delay(10000)
             }
         }
         activeJobs[platformId] = job
@@ -94,6 +111,143 @@ object PrintTask {
         activeJobs.clear()
         // 3. 重置 UI 状态
         _platformIds.value = emptySet()
+    }
+
+    private suspend fun executePrintCycle2(platformId: String, shopId: String = ""): List<ShopPrintOrderDetail> {
+       val orderIds = withContext(Dispatchers.IO) {
+            runCatching {
+                AppRequest.client.post("getDaySeq") {
+                    setBody(
+                        FormDataContent(
+                            Parameters.build {
+                                append("wmid", platformId)
+                                append("shopid", shopId)
+                                append("secret", "panyishigedashuaige")
+                            }
+                        )
+                    )
+                }.body<ShopPrintOrder>()
+            }.getOrNull()
+        }
+        if (orderIds?.code != 200 || orderIds.data.isEmpty()) {
+            return emptyList()
+        }
+        // 去重复订单
+        val filterOrders = filterUnprinted(platformId, orderIds.data)
+        if (filterOrders.isEmpty()) return emptyList()
+        createLogInfo("[${platformId}]获取订单数据成功！(${filterOrders.size}条)")
+        val orderDetails = withContext(Dispatchers.IO) {
+            runCatching {
+                AppRequest.client.post("getOrderList") {
+                    setBody(
+                        FormDataContent(
+                            Parameters.build {
+                                append("wmid", platformId)
+                                append("shopid", shopId)
+                                append("secret", "panyishigedashuaige")
+                                filterOrders.forEach {
+                                    append("orderid_list[]", it.orderId)
+                                }
+                            }
+                        )
+                    )
+                }.body<RequestResult<List<ShopPrintOrderDetail>>>()
+            }.getOrNull()?.data.orEmpty()
+        }
+        if (orderDetails.isEmpty()) return emptyList<ShopPrintOrderDetail>()
+        createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
+        markPrinted(platformId, filterOrders, orderIds.date)
+        return orderDetails
+    }
+
+
+
+
+    suspend fun loadPrintedOrdersFromDb() = withContext(Dispatchers.IO) {
+        val currentDate: LocalDate = LocalDate.now()
+        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val currentDateFormat: String = currentDate.format(formatter)
+        val allPrinted = DatabaseManager.database.printorderQueries.selectByDate(currentDateFormat).executeAsList() // 查询数据库所有已打印订单
+        val map: MutableMap<String, MutableMap<String, ShopPrintOrderItem>> = allPrinted
+            .groupBy { it.platform_id }
+            .mapValues { entry ->
+                entry.value.associate { printed ->
+                    printed.order_id to ShopPrintOrderItem(
+                        daySeq = printed.day_seq,
+                        orderId = printed.order_id
+                    )
+                }.toMutableMap()
+            }.toMutableMap()
+
+        printedOrderIds.value = map
+    }
+
+
+    fun markPrinted(
+        platformId: String,
+        orders: List<ShopPrintOrderItem>,
+        date: String = ""
+    ) {
+        printedOrderIds.update { map ->
+            val newMap = map.toMutableMap()
+            val orderMap = newMap.getOrPut(platformId) { mutableMapOf() }
+            orders.forEach { order ->
+                orderMap[order.orderId] =  order
+            }
+            newMap
+        }
+        scope.launch {
+            markPrintedDb(
+                platformId,
+                orders,
+                date
+            )
+        }
+    }
+
+
+    suspend fun createLogInfo(
+        message: String
+    ) = withContext(dbDispatcher) {
+        val currentDate: LocalDate = LocalDate.now()
+        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val currentDateFormat: String = currentDate.format(formatter)
+        DatabaseManager.database.transaction {
+            DatabaseManager.database.connectionInfoQueries.insertConnection(
+                dateText = currentDateFormat,
+                connectionDetail = message,
+                createdAt = System.currentTimeMillis() / 1000,
+                textColor = "#4CAF50"
+            )
+        }
+    }
+
+    suspend fun markPrintedDb(
+        platformId: String,
+        orders: List<ShopPrintOrderItem>,
+        date: String = ""
+    ) = withContext(dbDispatcher) {
+            val currentDate: LocalDate = LocalDate.now()
+            val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val currentDateFormat: String = currentDate.format(formatter)
+            DatabaseManager.database.transaction {
+                orders.forEach {
+                    DatabaseManager.database.printorderQueries.insertConnection(
+                        platform_id = platformId,
+                        order_id = it.orderId,
+                        day_seq = it.daySeq,
+                        date = date.ifEmpty { currentDateFormat }
+                    )
+                }
+            }
+    }
+
+    fun filterUnprinted (
+        platformId: String,
+        orders: List<ShopPrintOrderItem>
+    ): List<ShopPrintOrderItem> {
+        val printedMap = printedOrderIds.value[platformId].orEmpty()
+        return orders.filterNot { it.orderId in printedMap }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -118,9 +272,7 @@ object PrintTask {
             }
             emit(items)
         }.map { items ->
-            val newItems = items.filter { it.orderId !in printedOrderIds }
-            printedOrderIds.addAll(newItems.map { it.orderId })
-            newItems
+            filterUnprinted(platformId, items)
         }.flowOn(Dispatchers.IO).flatMapLatest { orderIds ->
             if (orderIds.isNotEmpty()) {
                 flow {
