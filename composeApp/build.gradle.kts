@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
-    kotlin("plugin.serialization") version "2.3.0"
+    kotlin("plugin.serialization") version "2.2.20"
     id("com.github.gmazzo.buildconfig") version "5.3.5"
     id("app.cash.sqldelight") version "2.2.1"
 }
@@ -33,7 +33,7 @@ kotlin {
             implementation("com.arkivanov.decompose:extensions-compose:3.2.2")
 
             // 3. Kotlinx Serialization JSON (用于保存导航状态)
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0-RC")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
             // Ktor 核心
             implementation("io.ktor:ktor-client-core:3.3.2")
@@ -132,4 +132,6 @@ sqldelight {
         }
     }
 }
+
+
 
