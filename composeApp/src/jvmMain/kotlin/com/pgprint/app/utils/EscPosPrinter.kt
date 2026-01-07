@@ -11,9 +11,15 @@ import com.github.anastaciocintra.escpos.image.CoffeeImageImpl
 import com.github.anastaciocintra.escpos.image.EscPosImage
 import com.github.anastaciocintra.escpos.image.RasterBitImageWrapper
 import com.pgprint.app.utils.Utils.generateCode128BarcodeImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.skiko.toBitmap
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.File
 import java.io.OutputStream
 import java.nio.charset.Charset
+import javax.imageio.ImageIO
 
 class EscPosPrinter(
     output: OutputStream,
@@ -142,9 +148,6 @@ class EscPosPrinter(
 
     fun barcode(data: String) {
         feed(1)
-        val barCode = BarCode()
-        barCode.setSystem(BarCode.BarCodeSystem.CODE128)
-        barCode.setJustification(EscPosConst.Justification.Center)
         val barcodeImage = generateCode128BarcodeImage(data)
         // 假设 barcodeImage 是你 ZXing 生成的 BufferedImage
         val coffeeImage = CoffeeImageImpl(barcodeImage)
@@ -157,6 +160,22 @@ class EscPosPrinter(
         escpos.write(imageWrapper, escposImage)
     }
 
+      suspend fun localImage(file: File) {
+        fileToBufferedImage(file)?.let {
+            // 构造 EscPosImage
+            val escposImage = withContext(Dispatchers.Default) {
+                val scaleImage = resizeBufferedImage(it, 380, 380)
+                val coffeeImage =  CoffeeImageImpl(scaleImage)
+                // 选择二值化算法（简单阈值最常用）
+                val bitonalAlgorithm = BitonalThreshold()
+                EscPosImage(coffeeImage, bitonalAlgorithm)
+            }
+            // 选择打印用的 wrapper（比如 RasterBitImageWrapper 支持较快 raster 方式打印）
+            val imageWrapper = RasterBitImageWrapper()
+            escpos.write(imageWrapper, escposImage)
+        }
+    }
+
     /* ========== 二维码 ========= */
 
     fun qrcode(data: String, size: Int = 8) {
@@ -166,5 +185,33 @@ class EscPosPrinter(
         qr.setJustification(EscPosConst.Justification.Center)
         escpos.write(qr, data)
         feed(1)
+    }
+
+     fun fileToBufferedImage(file: File): BufferedImage? {
+        if (file.exists()) {
+            return ImageIO.read(file)
+        }
+       return null
+    }
+
+    fun resizeBufferedImage(
+        src: BufferedImage,
+        targetWidth: Int,
+        targetHeight: Int
+    ): BufferedImage {
+        val target = BufferedImage(
+            targetWidth,
+            targetHeight,
+            BufferedImage.TYPE_INT_ARGB
+        )
+        val g2d = target.createGraphics()
+        g2d.setRenderingHint(
+            RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR
+        )
+        g2d.drawImage(src, 0, 0, targetWidth, targetHeight, null)
+        g2d.dispose()
+
+        return target
     }
 }

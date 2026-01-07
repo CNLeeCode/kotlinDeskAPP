@@ -35,10 +35,12 @@ import com.github.anastaciocintra.escpos.image.EscPosImage
 import com.pgprint.app.model.PrinterDevice
 import com.pgprint.app.print.PrintManager
 import com.pgprint.app.utils.EscPosPrinter
+import com.pgprint.app.utils.PersistentCache
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.consumeAsFlow
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
+import java.io.File
 import javax.print.DocFlavor
 import javax.print.PrintServiceLookup
 import javax.usb.UsbDevice
@@ -87,7 +89,7 @@ fun lineLR(left: String, right: String, width: Int = 32): ByteArray {
 }
 
 
-fun printImage2(): ByteArray {
+ suspend fun printImage2(): ByteArray {
     val out = ByteArrayOutputStream()
     val printer = EscPosPrinter(
         output = out,
@@ -173,6 +175,12 @@ fun printImage2(): ByteArray {
     printer.writeText("会服务到您满意为止！如果您满意，\n")
     printer.writeText("请小小鼓励我们一下，奖励我们五星好评哦！\n")
     printer.writeText("我们的客服电话：155 6601 2733\n")
+
+    val kfImageFile = File(PersistentCache.cacheDir.absolutePath,"kf-photo.jpg")
+    if (kfImageFile.exists()) {
+        printer.center()
+        printer.localImage(kfImageFile)
+    }
 
     /* ===== 结束 ===== */
     printer.feed(5)

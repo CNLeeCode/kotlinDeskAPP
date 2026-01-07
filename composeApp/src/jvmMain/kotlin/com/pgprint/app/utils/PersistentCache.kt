@@ -10,7 +10,7 @@ import java.io.File
 import java.util.Properties
 
 object PersistentCache {
-    private val STORED_DIR = BuildConfig.STORED_DIR
+    private const val STORED_DIR = BuildConfig.STORED_DIR
 
     val cacheDir: File = run {
         val os = System.getProperty("os.name").lowercase()

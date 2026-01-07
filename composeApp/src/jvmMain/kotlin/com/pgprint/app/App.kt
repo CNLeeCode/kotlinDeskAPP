@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeContentPadding
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -28,6 +29,7 @@ import com.pgprint.app.component.ChoosePrintDeviceList
 import com.pgprint.app.component.HistoryLogView
 import com.pgprint.app.component.HomeHeader
 import com.pgprint.app.component.RefreshButton
+import com.pgprint.app.component.SettingView
 import com.pgprint.app.component.ToolItem
 import com.pgprint.app.component.UpdateDialog
 import com.pgprint.app.component.UsbView
@@ -51,8 +53,10 @@ import com.pgprint.app.utils.PrintDevice
 import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrintTemplate
 import io.ktor.utils.io.core.toByteArray
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
@@ -91,8 +95,9 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
         currentCheckedPrinterDevice?.let { device ->
             printQueueFlow.collect { data ->
                 print("接收并且开始打印 $data")
-                PrinterManager.print(device, PrintTemplate.templateV1(data))
-
+                withContext(Dispatchers.IO) {
+                    PrinterManager.print(device, PrintTemplate.templateV1(data))
+                }
             }
         }
     }
@@ -131,9 +136,13 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
             onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
             onChangePrinter = component::saveCurrentCheckedPrinter,
             onClickPrintTest = {
-                uiScope.launch {
                     currentCheckedPrinterDevice?.let {
-                        PrinterManager.print(it, printImage2())
+                    uiScope.launch(Dispatchers.IO) {
+                        try {
+                            PrinterManager.print(it, printImage2())
+                        } catch (err: Throwable) {
+                            print(err.message)
+                        }
                     }
                 }
             },
@@ -249,11 +258,9 @@ fun LoggedView(
                 ToolItem(
                     modifier = toolItemModifier,
                 ) {
-                    Button(
-                        onClick = onClickPrintTest
-                    ) {
-                        Text("打印测试")
-                    }
+                    SettingView(
+                        onClickPrintTest = onClickPrintTest
+                    )
                 }
             }
         }

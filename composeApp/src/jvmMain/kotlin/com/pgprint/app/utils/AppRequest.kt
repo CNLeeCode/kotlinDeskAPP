@@ -40,10 +40,20 @@ object AppRequest {
         install(ContentNegotiation) {
             json(
                 Json {
+                    // 1. 忽略 JSON 中存在但 Kotlin 类中没有定义的字段 (不强校验)
                     ignoreUnknownKeys = true
-                    prettyPrint = true
+
+                    // 2. 如果 JSON 缺失某个字段，或者字段值为 null，
+                    // 且 Kotlin 类中该字段有默认值，则强制使用默认值
+                    coerceInputValues = true
+
+                    // 3. 允许 JSON 中的特殊值（如 NaN, Infinity）
                     isLenient = true
+
+                    // 4. 不对 null 进行显式序列化（减小体积）
                     explicitNulls = false
+
+                    prettyPrint = true
                 },
                 ContentType.Any
             )

@@ -108,7 +108,9 @@ fun main() = application {
             }
         }
         LaunchedEffect(true) {
-            PrintTask.loadPrintedOrdersFromDb()
+             PrintTask.deleteYesterdayPrintOrders()
+             delay(60)
+             PrintTask.loadPrintedOrdersFromDb()
             delay(60)
             loading = false
         }

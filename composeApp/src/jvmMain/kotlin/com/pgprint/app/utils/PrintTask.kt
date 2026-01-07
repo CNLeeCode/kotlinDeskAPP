@@ -75,9 +75,10 @@ object PrintTask {
         }
         val job = scope.launch(Dispatchers.IO) {
             println("开始监听平台: $platformId")
-            while (isActive) {62900
+            while (isActive) {
                 try {
                     val printDetails = executePrintCycle2(platformId, shopId)
+                    println("打印 printDetails: $platformId : $printDetails")
                     if (printDetails.isNotEmpty()) {
                         for (item in printDetails) {
                             printQueue.send(item)
@@ -134,6 +135,7 @@ object PrintTask {
         }
         // 去重复订单
         val filterOrders = filterUnprinted(platformId, orderIds.data)
+        createLogInfo("[${platformId}]filterOrders！(${filterOrders.size}｜${orderIds.data.size})")
         if (filterOrders.isEmpty()) return emptyList()
         createLogInfo("[${platformId}]获取订单数据成功！(${filterOrders.size}条)")
         val orderDetails = withContext(Dispatchers.IO) {
@@ -156,6 +158,7 @@ object PrintTask {
         }
         if (orderDetails.isEmpty()) return emptyList<ShopPrintOrderDetail>()
         createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
+        println("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
         markPrinted(platformId, filterOrders, orderIds.date)
         return orderDetails
     }
@@ -181,6 +184,14 @@ object PrintTask {
 
         printedOrderIds.value = map
     }
+
+    suspend fun deleteYesterdayPrintOrders() = withContext(Dispatchers.IO) {
+        val currentDate: LocalDate = LocalDate.now()
+        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val currentDateFormat: String = currentDate.format(formatter)
+        DatabaseManager.database.printorderQueries.deleteOlderThanDate(currentDateFormat)
+    }
+
 
 
     fun markPrinted(
@@ -247,6 +258,7 @@ object PrintTask {
         orders: List<ShopPrintOrderItem>
     ): List<ShopPrintOrderItem> {
         val printedMap = printedOrderIds.value[platformId].orEmpty()
+        println("printedOrderIds ${platformId}-${printedMap.toList()}" )
         return orders.filterNot { it.orderId in printedMap }
     }
 

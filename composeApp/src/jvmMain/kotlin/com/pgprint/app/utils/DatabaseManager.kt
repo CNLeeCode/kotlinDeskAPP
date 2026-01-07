@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 
 
 object DatabaseManager {
-    private const val DB_NAME = "print.db"
+    private const val DB_NAME = "pgprint.db"
 
     private const val DB_VERSION = 2 // 当前数据库版本
 

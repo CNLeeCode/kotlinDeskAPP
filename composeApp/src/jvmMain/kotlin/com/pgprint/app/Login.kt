@@ -61,12 +61,14 @@ fun Login(
         mutableStateOf(false)
     }
 
-    LaunchedEffect(true) {
-        DataStored.shopIdFlow.filter { it.isNotEmpty() }.collect { storedShopId ->
-            textFieldState.setTextAndPlaceCursorAtEnd(storedShopId)
-            loading = true
-            delay(1000)
-            component.toHomeAction(storedShopId)
+    LaunchedEffect(localNetworkStatus) {
+        if (localNetworkStatus.status == 1) {
+            DataStored.shopIdFlow.filter { it.isNotEmpty() }.collect { storedShopId ->
+                textFieldState.setTextAndPlaceCursorAtEnd(storedShopId)
+                loading = true
+                delay(1000)
+                component.toHomeAction(storedShopId)
+            }
         }
     }
 
