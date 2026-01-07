@@ -51,9 +51,9 @@ object AppRequest {
 
         // 2. 超时配置（桌面端网络环境通常较好，但要防范死连接）
         install(HttpTimeout) {
-            requestTimeoutMillis = 15000
-            connectTimeoutMillis = 10000
-            socketTimeoutMillis = 15000
+            requestTimeoutMillis = Long.MAX_VALUE
+            connectTimeoutMillis = 600000
+            socketTimeoutMillis = 150000
         }
 
         // 3. 日志（配合你之前的 SLF4J/Logback）
