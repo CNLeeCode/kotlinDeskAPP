@@ -11,9 +11,11 @@ import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.PrinterTarget
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.UiState
+import com.pgprint.app.model.UpdateState
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.DataStored
 import com.pgprint.app.utils.DatabaseManager
+import com.pgprint.app.utils.UpdateManager
 import com.pgprint.app.utils.UsbDevices
 import com.pgprint.app.utils.Utils
 import io.ktor.client.call.body
@@ -47,10 +49,13 @@ interface HomeComponent {
     val checkedPrintPlatform: StateFlow<List<String>>
     val HistoryLog: StateFlow<List<ConnectionInfo>>
 
+    val updateManagerState: StateFlow<UpdateState>
+
     fun refreshPrintPlatform()
     fun toLoginPage()
     fun saveCurrentCheckedPrinter (printName: String)
     fun onChangeCheckedPrintPlatform(wmId: String)
+    fun updateManagerDownLoad(url: String)
 }
 
 class DefaultHomeComponent (
@@ -109,6 +114,19 @@ class DefaultHomeComponent (
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = UiState.Idle
     )
+
+    //
+    override val updateManagerState = UpdateManager.state.stateIn(
+        scope,
+        SharingStarted.Eagerly,
+        UpdateState.Idle
+    )
+
+    override fun updateManagerDownLoad(url: String) {
+        scope.launch {
+            UpdateManager.startUpdate(url)
+        }
+    }
 
 
     override fun saveCurrentCheckedPrinter (printName: String) {

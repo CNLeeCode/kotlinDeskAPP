@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Window
 import com.example.compose.AppTheme
 import com.pgprint.app.BuildConfig.APP_VERSION
 import com.pgprint.app.component.AppFooter
@@ -28,6 +29,7 @@ import com.pgprint.app.component.HistoryLogView
 import com.pgprint.app.component.HomeHeader
 import com.pgprint.app.component.RefreshButton
 import com.pgprint.app.component.ToolItem
+import com.pgprint.app.component.UpdateDialog
 import com.pgprint.app.component.UsbView
 import com.pgprint.app.model.ConnectionInfo
 import com.pgprint.app.model.PrintDeviceData
@@ -69,6 +71,10 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
     val currentPrintPlatformIds by PrintTask.platformIds.collectAsState()
     val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
     val printQueueFlow = PrintTask.printQueueFlow
+    val updateState by component.updateManagerState.collectAsState()
+    var alert by remember {
+        mutableStateOf(false)
+    }
 
     LaunchedEffect(checkedPrintPlatform, currentCheckedPrinterDevice) {
         if (
@@ -96,6 +102,20 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
         PrintDevice.getPrintDeviceData()
     }
 
+    if (alert) {
+        Window(
+            onCloseRequest = {
+                alert = false
+            },
+        ) {
+            UpdateDialog(
+                state = updateState,
+            ) {
+                component.updateManagerDownLoad("http://39.98.37.44/apk/pgprinter-1.0.2.msi");
+            }
+        }
+    }
+
     AppTheme {
         LoggedView(
             modifier = modifier.fillMaxSize(),
@@ -116,6 +136,9 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
                         PrinterManager.print(it, printImage2())
                     }
                 }
+            },
+            checkUpDateAction = {
+                alert = true
             }
         )
     }
@@ -136,6 +159,7 @@ fun LoggedView(
     onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
     onChangePrinter: (String) -> Unit,
     onClickPrintTest: () -> Unit,
+    checkUpDateAction:  () -> Unit,
 ) {
     Column(
         modifier = modifier.background(AppColors.WindowBackground).safeContentPadding().fillMaxSize(),
@@ -163,9 +187,9 @@ fun LoggedView(
                                 }
                             }
                         ) {
-                            CheckUpDateButton {
-
-                            }
+                            CheckUpDateButton(
+                                onClick = checkUpDateAction
+                            )
                         }
                     }
                 },

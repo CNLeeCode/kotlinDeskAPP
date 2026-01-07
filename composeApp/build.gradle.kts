@@ -2,7 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
 
-val myAppVersion = "1.0.2"
+val myAppVersion = "1.0.0"
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -101,7 +101,7 @@ compose.desktop {
             "-Dsun.jnu.encoding=UTF-8"
         )
         nativeDistributions {
-            targetFormats(TargetFormat.Exe, TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "pgprinter"
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"
