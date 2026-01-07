@@ -1,6 +1,8 @@
 package com.pgprint.app.utils
 
 import com.pgprint.app.model.UpdateState
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.contentLength
@@ -20,8 +22,12 @@ object UpdateManager {
         try {
             _state.value = UpdateState.Checking
 
+//            val msiFile = File(
+//                System.getProperty("java.io.tmpdir"),
+//                "app_update.msi"
+//            )
             val msiFile = File(
-                System.getProperty("java.io.tmpdir"),
+                PersistentCache.cacheDir,
                 "app_update.msi"
             )
 
@@ -40,7 +46,16 @@ object UpdateManager {
 
     private suspend fun download(url: String, target: File) {
 
-        AppRequest.client.prepareGet(url).execute() { response ->
+        AppRequest.client.prepareGet(url) {
+            timeout {
+                // 下载大文件，我们将总请求超时设为无限
+                requestTimeoutMillis = Long.MAX_VALUE
+                // 只要 60 秒内有数据传输，就不算超时
+                socketTimeoutMillis = 60_000
+                // 建立连接的等待时间
+                connectTimeoutMillis = 30_000
+            }
+        }.execute { response ->
             val channel = response.bodyAsChannel()
             val total = response.contentLength() ?: -1
 
