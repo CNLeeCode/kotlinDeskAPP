@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Window
 import com.example.compose.AppTheme
 import com.pgprint.app.BuildConfig.APP_VERSION
 import com.pgprint.app.component.AppFooter
@@ -31,34 +32,35 @@ import com.pgprint.app.component.HomeHeader
 import com.pgprint.app.component.RefreshButton
 import com.pgprint.app.component.SettingView
 import com.pgprint.app.component.ToolItem
-import com.pgprint.app.component.UpdateDialog
 import com.pgprint.app.component.UsbView
 import com.pgprint.app.model.ConnectionInfo
 import com.pgprint.app.model.PrintDeviceData
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.UiState
-import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.router.LocalCurrentShopId
 import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.HomeComponent
-import com.pgprint.app.usb.getTestPrintData
-import com.pgprint.app.usb.printImage
-import com.pgprint.app.usb.printImage2
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.AppStrings
-import com.pgprint.app.utils.DataStored
-import com.pgprint.app.utils.DatabaseManager
+import com.pgprint.app.utils.DesktopAudioPlayer
+import com.pgprint.app.utils.HistoryLog
 import com.pgprint.app.utils.PrintDevice
 import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrintTemplate
-import io.ktor.utils.io.core.toByteArray
+import com.pgprint.app.utils.PrinterManager
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import pgprint.composeapp.generated.resources.Res
+import pgprint.composeapp.generated.resources.change_shop
+import pgprint.composeapp.generated.resources.choosefile
+import pgprint.composeapp.generated.resources.log
 
+@OptIn(FlowPreview::class)
 @Composable
 @Preview
 fun App(component: HomeComponent, modifier: Modifier = Modifier) {
@@ -69,22 +71,41 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
     val localCurrentShopId =  LocalCurrentShopId.current
     val localNetworkStatus = LocalNetworkStatus.current
     val printPlatform by component.printPlatform.collectAsState()
+
+    val printPlatformIds by component.printPlatformIds.collectAsState()
+
     val checkedPrintPlatform by component.checkedPrintPlatform.collectAsState()
-    val historyLog by component.HistoryLog.collectAsState()
+    val historyLog by HistoryLog.historyLog.collectAsState()
     val currentCheckedPrinter by PrintDevice.currentCheckedPrinterName.collectAsState()
-    val currentPrintPlatformIds by PrintTask.platformIds.collectAsState()
+    val checkedPrintPlatformAll by component.checkedPrintPlatformAll.collectAsState(false)
+
+    // val currentPrintPlatformIds by PrintTask.platformIds.collectAsState()
     val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
     val printQueueFlow = PrintTask.printQueueFlow
-    val updateState by component.updateManagerState.collectAsState()
-    var alert by remember {
-        mutableStateOf(false)
-    }
+    // val updateState by component.updateManagerState.collectAsState()
+    val refundNotice = PrintTask.refundNotice
 
     LaunchedEffect(checkedPrintPlatform, currentCheckedPrinterDevice) {
         if (
             currentCheckedPrinterDevice != null && shopId.isNotEmpty()
         ) {
             PrintTask.updatePlatforms(checkedPrintPlatform.toSet(), shopId)
+        }
+        if (checkedPrintPlatform.isEmpty()) {
+            PrintTask.stopPollingTask()
+        }
+    }
+
+
+    LaunchedEffect(checkedPrintPlatform) {
+        when (printPlatform) {
+            is UiState.Success<RequestResult<List<PrintPlatform>>> -> {
+                val isAll = checkedPrintPlatform.size == (printPlatform as UiState.Success<RequestResult<List<PrintPlatform>>>).data.data?.size
+                component.onChangePrintPlatformAll(
+                    isAll, if (isAll) checkedPrintPlatform else emptyList()
+                )
+            }
+            else -> {}
         }
     }
 
@@ -102,23 +123,17 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
         }
     }
 
+    LaunchedEffect(true) {
+        refundNotice.sample(10000).collect {
+            withContext(Dispatchers.IO) {
+                DesktopAudioPlayer.play("notice.wav")
+            }
+        }
+    }
+
     LaunchedEffect(localCurrentShopId) {
         component.refreshPrintPlatform()
         PrintDevice.getPrintDeviceData()
-    }
-
-    if (alert) {
-        Window(
-            onCloseRequest = {
-                alert = false
-            },
-        ) {
-            UpdateDialog(
-                state = updateState,
-            ) {
-                component.updateManagerDownLoad("http://39.98.37.44/apk/pgprinter-1.0.2.msi");
-            }
-        }
     }
 
     AppTheme {
@@ -132,23 +147,21 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
             checkedPrintPlatform = checkedPrintPlatform,
             currentCheckedPrinter = currentCheckedPrinter,
             getPrintDeviceData = PrintDevice::getPrintDeviceData,
+            checkedPrintPlatformAll = checkedPrintPlatformAll,
             refreshPrintPlatform = component::refreshPrintPlatform,
             onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
             onChangePrinter = component::saveCurrentCheckedPrinter,
-            onClickPrintTest = {
-                    currentCheckedPrinterDevice?.let {
-                    uiScope.launch(Dispatchers.IO) {
-                        try {
-                            PrinterManager.print(it, printImage2())
-                        } catch (err: Throwable) {
-                            print(err.message)
-                        }
-                    }
+            onClickPrintTest = remember (currentCheckedPrinterDevice) {
+                {
+                    component.onClickPrintTest(currentCheckedPrinterDevice)
                 }
             },
-            checkUpDateAction = {
-                alert = true
-            }
+            onChangePrintPlatformAll = remember(printPlatformIds) {
+                {
+                    component.onChangePrintPlatformAll(it, if (it) printPlatformIds else emptyList<String>())
+                }
+            },
+            checkUpDateAction = { }
         )
     }
 }
@@ -163,10 +176,12 @@ fun LoggedView(
     checkedPrintPlatform: List<String>,
     historyLog: List<ConnectionInfo>,
     currentCheckedPrinter: String,
+    checkedPrintPlatformAll: Boolean,
     getPrintDeviceData: () -> Unit,
     refreshPrintPlatform: () -> Unit,
     onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
     onChangePrinter: (String) -> Unit,
+    onChangePrintPlatformAll: (Boolean) -> Unit,
     onClickPrintTest: () -> Unit,
     checkUpDateAction:  () -> Unit,
 ) {
@@ -178,7 +193,17 @@ fun LoggedView(
         ) {
             AppHeader(
                 leadingContent = {
-                    Text(currentShop, fontSize = 14.sp)
+                    Row (
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(currentShop, fontSize = 14.sp)
+                        Icon(
+                            painter = painterResource(Res.drawable.change_shop),
+                            contentDescription = "change",
+                            tint = AppColors.PrimaryColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 },
                 trailingContent = {
                     Row (
@@ -208,7 +233,7 @@ fun LoggedView(
             HomeHeader(
                 modifier = Modifier.fillMaxWidth().height(260.dp)
             ) {
-                val toolItemModifier = Modifier.weight(1f)
+                val toolItemModifier = Modifier.widthIn(200.dp, 300.dp)
 
                 ToolItem(
                     modifier = toolItemModifier,
@@ -236,7 +261,12 @@ fun LoggedView(
                                     refreshPrintPlatform()
                                 }
                             }
-                            else -> {}
+                            else -> {
+                                Checkbox(
+                                    checked = checkedPrintPlatformAll,
+                                    onCheckedChange = onChangePrintPlatformAll,
+                                )
+                            }
                         }
                     }
                 ) {

@@ -21,7 +21,7 @@ object UsbDevices {
         // 2. 扫描串口设备 (Type-C 转串口或工业打印机直连)
         val serialPorts = SerialPort.getCommPorts()
         serialPorts.forEachIndexed { key, it ->
-            devicesList.add(PrinterTarget.Serial("${key}-${ UUID.randomUUID()}", it.descriptivePortName, SerialConfig(), it.vendorID, it.productID, it.serialNumber))
+            devicesList.add(PrinterTarget.Serial("${key}-${ UUID.randomUUID()}", it.systemPortName, SerialConfig(), it.vendorID, it.productID, it.serialNumber))
         }
         return devicesList.toList()
     }

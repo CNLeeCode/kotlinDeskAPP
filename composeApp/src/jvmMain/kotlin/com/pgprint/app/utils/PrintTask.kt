@@ -47,7 +47,11 @@ object PrintTask {
     private val printedOrderIds = MutableStateFlow<Map<String, MutableMap<String, ShopPrintOrderItem>>>(emptyMap())
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
+
     val platformIds = _platformIds.asStateFlow()
+
+
+    val refundNotice = MutableStateFlow<Long>(0)
 
     /**
      * 更新平台列表：自动对比差异，增加新任务，取消移除的任务
@@ -83,7 +87,7 @@ object PrintTask {
                         for (item in printDetails) {
                             printQueue.send(item)
                         }
-                        println("打印订单信息: $platformId : $printDetails")
+//                        println("打印订单信息: $platformId : $printDetails")
                     }
                 } catch (e: Exception) {
                     println("平台 $platformId 执行出错: ${e.message}")
@@ -133,11 +137,15 @@ object PrintTask {
         if (orderIds?.code != 200 || orderIds.data.isEmpty()) {
             return emptyList()
         }
+        if (orderIds.refundNotice.isNotEmpty()) {
+            scope.launch {
+                refundNotice.value =  System.currentTimeMillis()
+               //  DesktopAudioPlayer.play("notice.wav")
+            }
+        }
         // 去重复订单
         val filterOrders = filterUnprinted(platformId, orderIds.data)
-        createLogInfo("[${platformId}]filterOrders！(${filterOrders.size}｜${orderIds.data.size})")
         if (filterOrders.isEmpty()) return emptyList()
-        createLogInfo("[${platformId}]获取订单数据成功！(${filterOrders.size}条)")
         val orderDetails = withContext(Dispatchers.IO) {
             runCatching {
                 AppRequest.client.post("getOrderList") {
@@ -158,7 +166,6 @@ object PrintTask {
         }
         if (orderDetails.isEmpty()) return emptyList<ShopPrintOrderDetail>()
         createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
-        println("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
         markPrinted(platformId, filterOrders, orderIds.date)
         return orderDetails
     }
@@ -217,21 +224,9 @@ object PrintTask {
     }
 
 
-    suspend fun createLogInfo(
+    fun createLogInfo(
         message: String
-    ) = withContext(dbDispatcher) {
-        val currentDate: LocalDate = LocalDate.now()
-        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        val currentDateFormat: String = currentDate.format(formatter)
-        DatabaseManager.database.transaction {
-            DatabaseManager.database.connectionInfoQueries.insertConnection(
-                dateText = currentDateFormat,
-                connectionDetail = message,
-                createdAt = System.currentTimeMillis() / 1000,
-                textColor = "#4CAF50"
-            )
-        }
-    }
+    ) = HistoryLog.updateData(message)
 
     suspend fun markPrintedDb(
         platformId: String,

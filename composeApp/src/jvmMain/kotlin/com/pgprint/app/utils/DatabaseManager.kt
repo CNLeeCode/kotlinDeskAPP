@@ -7,7 +7,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.LocalDate
@@ -47,7 +46,6 @@ object DatabaseManager {
         val dbFile = getDatabaseFile()
         // 创建 JDBC 驱动
         val driver = JdbcSqliteDriver("jdbc:sqlite:${dbFile.absolutePath}")
-
         // 如果是新数据库，则创建表结构
         // 注意：Schema 类是 SQLDelight 自动生成的
         try {

@@ -78,7 +78,7 @@ fun main() = application {
         )
     }
     val mainWindowState = rememberWindowState(
-        size = DpSize(1200.dp, 900.dp),
+        size = DpSize(1300.dp, 900.dp),
     )
 
     LifecycleController(lifecycle, mainWindowState)
@@ -111,8 +111,8 @@ fun main() = application {
              PrintTask.deleteYesterdayPrintOrders()
              delay(60)
              PrintTask.loadPrintedOrdersFromDb()
-            delay(60)
-            loading = false
+             delay(60)
+             loading = false
         }
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentEnforcement provides false

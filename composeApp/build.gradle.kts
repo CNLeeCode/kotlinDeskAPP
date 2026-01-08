@@ -62,12 +62,14 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
-
+            //soundlibs:mp3
+            implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
             //zxing
             implementation("com.google.zxing:core:3.5.2")
             // sqldelight 1. 驱动程序：桌面端（JVM）使用 JDBC 驱动
@@ -106,6 +108,7 @@ compose.desktop {
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"
             description = "2025 BUTCOMPANY"
+            appResourcesRootDir.set(project.layout.projectDirectory.dir("extraResources"))
             windows {
                 menuGroup = "pgprinter"
                 shortcut = true

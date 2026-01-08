@@ -5,6 +5,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,9 +20,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.CircularProgressIndicator
@@ -49,8 +52,11 @@ fun HomeHeader(
     modifier: Modifier = Modifier,
     content: @Composable  (RowScope.() -> Unit)
 ) {
+
     Row (
-        modifier = modifier.background(AppColors.HeaderBackground).padding(20.dp),
+        modifier = modifier.background(AppColors.HeaderBackground).padding(20.dp).horizontalScroll(
+            state = rememberScrollState()
+        ),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         content()
@@ -177,7 +183,7 @@ fun ToolItem(
     content: @Composable (ColumnScope.() -> Unit)
 ) {
     Card (
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier,
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),

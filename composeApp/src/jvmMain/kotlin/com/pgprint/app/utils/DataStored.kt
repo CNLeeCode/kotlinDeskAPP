@@ -84,4 +84,12 @@ object DataStored  {
             }
         }
     }
+
+    suspend fun saveDataToPlatform(plateList: List<String>) {
+        withContext(Dispatchers.IO) {
+            stored.edit { prefs ->
+                prefs[CHECKED_PRINT_PLATFORM] =  Json.encodeToString(plateList)
+            }
+        }
+    }
 }

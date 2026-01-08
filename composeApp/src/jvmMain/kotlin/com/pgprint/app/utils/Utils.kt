@@ -4,6 +4,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
 import java.awt.image.BufferedImage
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -70,4 +71,22 @@ object Utils {
     fun hasMiddleSpace(str: String): Boolean {
         return Regex("\\S\\s+\\S").containsMatchIn(str)
     }
+
+    fun getResourcesDir(): File {
+        // 1. 获取程序运行时的路径
+        val appPath = System.getProperty("compose.application.resources.dir")
+
+        return if (appPath != null) {
+            // 说明是打包后的安装环境
+            File(appPath)
+        } else {
+            // 说明是开发环境 (IDE 运行)
+            File(System.getProperty("user.dir") + "/extraResources")
+        }
+    }
+
+    fun getAudioFile(fileName: String): File {
+        return File(getResourcesDir(), "audio/$fileName")
+    }
+
 }

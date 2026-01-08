@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +36,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pgprint.app.model.PrinterTarget
+import com.pgprint.app.utils.DesktopAudioPlayer
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Close_circle_fill
 import pgprint.composeapp.generated.resources.Res
@@ -47,6 +51,7 @@ fun SettingView(
     onClickPrintTest: () -> Unit = {}
 ) {
 
+    val scope = rememberCoroutineScope()
     var showKFPhotoPopup by remember {
         mutableStateOf(false)
     }
@@ -54,7 +59,7 @@ fun SettingView(
     val lazyListState = rememberLazyListState()
 
     if (showKFPhotoPopup) {
-        AlertDialog(
+        BasicAlertDialog(
             onDismissRequest = {
                 showKFPhotoPopup = false
             },
@@ -118,7 +123,17 @@ fun SettingView(
                 }
             }
             item (key = "0002") {
-
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        scope.launch {
+                            DesktopAudioPlayer.play("notice.wav", true)
+                        }
+                    },
+                    shape = CutCornerShape(2.dp),
+                ) {
+                    Text("播放音频")
+                }
             }
         }
         VerticalScrollbar(

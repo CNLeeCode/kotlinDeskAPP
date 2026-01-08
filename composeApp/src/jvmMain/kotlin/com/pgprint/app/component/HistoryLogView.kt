@@ -41,7 +41,7 @@ fun HistoryLogView(
             state = state
         ) {
            items(items = historyLog,  key = { it.key }) {
-               Text(text = it.message, fontSize = 14.sp, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(4.dp))
+               Text(text = it.showMsg(), fontSize = 14.sp, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(4.dp))
            }
         }
         VerticalScrollbar(
