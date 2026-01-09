@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
 object DatabaseManager {
     private const val DB_NAME = "pgprint.db"
 
-    private const val DB_VERSION = 2 // 当前数据库版本
+    private const val DB_VERSION = 1 // 当前数据库版本
 
     val dbScope = CoroutineScope(
         Dispatchers.IO + SupervisorJob()
@@ -40,6 +40,9 @@ object DatabaseManager {
         return File(folder, DB_NAME)
     }
 
+    private fun setUserVersion(driver: SqlDriver, version: Int) {
+        driver.execute(null, "PRAGMA user_version = $version", 0)
+    }
 
     val database: AppDatabase by lazy (LazyThreadSafetyMode.SYNCHRONIZED) {
 
@@ -51,8 +54,9 @@ object DatabaseManager {
         try {
             if (!dbFile.exists() || dbFile.length() == 0L) {
                 createSchema(driver)
+                setUserVersion(driver, DB_VERSION)
             } else {
-                migrateSchema(driver, oldVersion = 1)
+                migrateSchema(driver)
             }
         }catch (err: Throwable) {
             println("AppDatabase ${err.message}")
@@ -82,38 +86,23 @@ object DatabaseManager {
                     order_id TEXT NOT NULL,
                     day_seq TEXT NOT NULL,
                     date TEXT NOT NULL,
+                    shop_id TEXT DEFAULT '' ,
                     PRIMARY KEY(platform_id, order_id)
                 );
-                
-                CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date);
+                CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date, shop_id);
             """.trimIndent(),
             0
         )
+
     }
 
-    private fun migrateSchema(driver: SqlDriver, oldVersion: Int) {
-        if (oldVersion < DB_VERSION) {
-            driver.execute(
-                null,
-                "ALTER TABLE ConnectionInfo ADD COLUMN textColor TEXT DEFAULT '#07c160'",
-                0
-            )
-        }
+    private fun migrateSchema(driver: SqlDriver) {
+        val currentVersion  = driver.execute(
+            identifier = null,
+            sql = "PRAGMA user_version;",
+            parameters = 0
+        ).value
+        setUserVersion(driver, currentVersion.toInt())
     }
 
-    fun deleteHistoryByDate(date: String) {
-        dbScope.launch {
-            database.connectionInfoQueries.deleteByDate(date)
-        }
-    }
-
-    suspend fun deleteYesterdayHistory() {
-        val currentDate: LocalDate = LocalDate.now()
-        val yesterdayDate: LocalDate = currentDate.minusDays(1)
-        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-        val yesterday: String = yesterdayDate.format(formatter)
-        withContext(Dispatchers.IO) {
-            deleteHistoryByDate(yesterday)
-        }
-    }
 }

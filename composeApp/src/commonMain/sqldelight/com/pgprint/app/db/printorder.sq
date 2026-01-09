@@ -6,23 +6,27 @@ CREATE TABLE printed_order (
     order_id TEXT NOT NULL,
     day_seq TEXT NOT NULL,
     date TEXT NOT NULL,
-    PRIMARY KEY(platform_id, order_id)
+    shop_id TEXT DEFAULT '' ,
+    PRIMARY KEY(platform_id, order_id, shop_id)
 );
 
 CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date);
 -- 插入数据
 insertConnection:
-INSERT OR IGNORE INTO printed_order(platform_id, order_id, day_seq, date)
-VALUES (?, ?, ?, ?);
+INSERT OR IGNORE INTO printed_order(platform_id, order_id, day_seq, date, shop_id)
+VALUES (?, ?, ?, ?, ?);
 
 -- 按日期查询
 selectByDate:
-SELECT * FROM printed_order WHERE date = ? ORDER BY day_seq ASC;
+SELECT * FROM printed_order WHERE date = ? AND shop_id = ? ORDER BY day_seq ASC;
 
 -- 按日期删除（方便清理旧数据，有了索引此操作会非常快）
 deleteByDate:
-DELETE FROM printed_order WHERE date = ?;
+DELETE FROM printed_order WHERE date = ? AND shop_id = ?;
 
 -- 清理某日期之前的所有旧数据
 deleteOlderThanDate:
-DELETE FROM printed_order WHERE date < ?;
+DELETE FROM printed_order WHERE date < ? AND shop_id = ?;
+
+deleteAll:
+DELETE FROM printed_order;

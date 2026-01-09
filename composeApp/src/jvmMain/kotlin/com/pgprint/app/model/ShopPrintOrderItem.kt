@@ -11,4 +11,8 @@ data class ShopPrintOrderItem(
 
     @SerialName("orderid")
     val orderId: String,
-)
+) {
+    fun getKey(): Int {
+        return daySeq.split(" ")[0].toInt()
+    }
+}

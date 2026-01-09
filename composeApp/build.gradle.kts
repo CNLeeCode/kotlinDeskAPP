@@ -1,7 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-
 val myAppVersion = "1.0.0"
 
 plugins {
@@ -68,6 +67,7 @@ kotlin {
             implementation(libs.kotlin.test)
         }
         jvmMain.dependencies {
+
             //soundlibs:mp3
             implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
             //zxing

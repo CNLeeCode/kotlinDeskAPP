@@ -48,7 +48,8 @@ import pgprint.composeapp.generated.resources.Res
 @Composable
 fun SettingView(
     modifier: Modifier = Modifier,
-    onClickPrintTest: () -> Unit = {}
+    onClickPrintTest: () -> Unit = {},
+    onClickOpenDrawer: () -> Unit = {}
 ) {
 
     val scope = rememberCoroutineScope()
@@ -133,6 +134,15 @@ fun SettingView(
                     shape = CutCornerShape(2.dp),
                 ) {
                     Text("播放音频")
+                }
+            }
+            item (key = "0003") {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = onClickOpenDrawer,
+                    shape = CutCornerShape(2.dp),
+                ) {
+                    Text("查询打印")
                 }
             }
         }

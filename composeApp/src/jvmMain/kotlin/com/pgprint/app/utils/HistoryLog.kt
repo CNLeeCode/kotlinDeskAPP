@@ -21,6 +21,11 @@ object HistoryLog {
                 time = System.currentTimeMillis()
             )) + it
         }
+    }
 
+    fun clearData() {
+        _historyLog.update {
+            emptyList()
+        }
     }
 }

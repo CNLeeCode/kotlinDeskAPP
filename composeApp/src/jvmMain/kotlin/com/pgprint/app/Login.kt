@@ -43,6 +43,7 @@ import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.LoginComponent
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.DataStored
+import com.pgprint.app.utils.PrintTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import org.jetbrains.compose.resources.painterResource
@@ -66,19 +67,19 @@ fun Login(
             DataStored.shopIdFlow.filter { it.isNotEmpty() }.collect { storedShopId ->
                 textFieldState.setTextAndPlaceCursorAtEnd(storedShopId)
                 loading = true
-                delay(1000)
                 component.toHomeAction(storedShopId)
             }
         }
     }
 
-    fun toHomePage () {
-        if (textFieldState.text.toString().isNotEmpty()) {
-            loading = true
-            component.toHomeAction(textFieldState.text.toString())
+    val toHomePage = remember {
+        {
+            if (textFieldState.text.toString().isNotEmpty()) {
+                loading = true
+                component.toHomeAction(textFieldState.text.toString())
+            }
         }
     }
-
 
     Box(
         modifier = modifier.fillMaxSize()
@@ -123,7 +124,7 @@ fun Login(
             )
             Spacer(modifier = Modifier.height(20.dp))
             Button(
-                onClick = ::toHomePage,
+                onClick = toHomePage,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.width(280.dp)
                     .height(40.dp)

@@ -12,6 +12,7 @@ import com.pgprint.app.usb.printImage2
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.DataStored
 import com.pgprint.app.utils.HistoryLog
+import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.utils.UpdateManager
 import io.ktor.client.call.body
@@ -19,6 +20,7 @@ import io.ktor.client.request.get
 import io.ktor.util.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -43,6 +46,8 @@ interface HomeComponent {
     val updateManagerState: StateFlow<UpdateState>
     val checkedPrintPlatformAll: MutableSharedFlow<Boolean>
 
+    val loading: MutableStateFlow<Boolean>
+
     fun refreshPrintPlatform()
     fun toLoginPage()
     fun saveCurrentCheckedPrinter (printName: String)
@@ -52,6 +57,8 @@ interface HomeComponent {
     fun onClickPrintTest(currentCheckedPrinterDevice: PrinterTarget?)
 
     fun onChangePrintPlatformAll(isAll: Boolean, platformIds: List<String>)
+
+    fun onChangeShopAction()
 
 }
 
@@ -64,6 +71,8 @@ class DefaultHomeComponent (
     val currentDate: LocalDate = LocalDate.now()
     val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     val currentDateFormat: String = currentDate.format(formatter)
+
+    override val loading = MutableStateFlow(false)
 
     private val scope = componentContext.componentScope()
     // 当前门店ID
@@ -169,4 +178,19 @@ class DefaultHomeComponent (
         }
     }
 
+    override fun onChangeShopAction() {
+        loading.value = true
+        scope.launch {
+            PrintTask.stopPollingTask()
+            DataStored.saveShopId("")
+            onChangePrintPlatformAll(false, emptyList())
+            PrintTask.clearPrintedOrderIds()
+            HistoryLog.clearData()
+            withContext(Dispatchers.Main) {
+                delay(1000)
+                loading.value = false
+                toLogin()
+            }
+        }
+    }
 }

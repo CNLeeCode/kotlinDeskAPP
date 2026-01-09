@@ -17,6 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -48,10 +49,11 @@ object PrintTask {
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
 
-    val platformIds = _platformIds.asStateFlow()
+    val printedOrderMapList = printedOrderIds.asStateFlow()
+
+    val refundNotice = MutableSharedFlow<Long>(0)
 
 
-    val refundNotice = MutableStateFlow<Long>(0)
 
     /**
      * 更新平台列表：自动对比差异，增加新任务，取消移除的任务
@@ -139,8 +141,7 @@ object PrintTask {
         }
         if (orderIds.refundNotice.isNotEmpty()) {
             scope.launch {
-                refundNotice.value =  System.currentTimeMillis()
-               //  DesktopAudioPlayer.play("notice.wav")
+                refundNotice.tryEmit(System.currentTimeMillis())
             }
         }
         // 去重复订单
@@ -166,18 +167,16 @@ object PrintTask {
         }
         if (orderDetails.isEmpty()) return emptyList<ShopPrintOrderDetail>()
         createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
-        markPrinted(platformId, filterOrders, orderIds.date)
+        markPrinted(platformId, orderDetails.map { ShopPrintOrderItem( orderId = it.orderId, daySeq = it.daySeq) }, orderIds.date, shopId)
         return orderDetails
     }
 
 
-
-
-    suspend fun loadPrintedOrdersFromDb() = withContext(Dispatchers.IO) {
+    suspend fun loadPrintedOrdersFromDb(shopId: String) = withContext(Dispatchers.IO) {
         val currentDate: LocalDate = LocalDate.now()
         val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val currentDateFormat: String = currentDate.format(formatter)
-        val allPrinted = DatabaseManager.database.printorderQueries.selectByDate(currentDateFormat).executeAsList() // 查询数据库所有已打印订单
+        val allPrinted = DatabaseManager.database.printorderQueries.selectByDate(currentDateFormat, shopId).executeAsList() // 查询数据库所有已打印订单
         val map: MutableMap<String, MutableMap<String, ShopPrintOrderItem>> = allPrinted
             .groupBy { it.platform_id }
             .mapValues { entry ->
@@ -192,19 +191,18 @@ object PrintTask {
         printedOrderIds.value = map
     }
 
-    suspend fun deleteYesterdayPrintOrders() = withContext(Dispatchers.IO) {
+    suspend fun deleteYesterdayPrintOrders(shopId: String) = withContext(Dispatchers.IO) {
         val currentDate: LocalDate = LocalDate.now()
         val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val currentDateFormat: String = currentDate.format(formatter)
-        DatabaseManager.database.printorderQueries.deleteOlderThanDate(currentDateFormat)
+        DatabaseManager.database.printorderQueries.deleteOlderThanDate(currentDateFormat, shopId)
     }
-
-
 
     fun markPrinted(
         platformId: String,
         orders: List<ShopPrintOrderItem>,
-        date: String = ""
+        date: String = "",
+        shopId: String = ""
     ) {
         printedOrderIds.update { map ->
             val newMap = map.toMutableMap()
@@ -218,8 +216,15 @@ object PrintTask {
             markPrintedDb(
                 platformId,
                 orders,
-                date
+                date,
+                shopId
             )
+        }
+    }
+
+    fun clearPrintedOrderIds() {
+        printedOrderIds.update {
+            emptyMap()
         }
     }
 
@@ -231,7 +236,8 @@ object PrintTask {
     suspend fun markPrintedDb(
         platformId: String,
         orders: List<ShopPrintOrderItem>,
-        date: String = ""
+        date: String = "",
+        shopId: String = "",
     ) = withContext(dbDispatcher) {
             val currentDate: LocalDate = LocalDate.now()
             val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -242,7 +248,8 @@ object PrintTask {
                         platform_id = platformId,
                         order_id = it.orderId,
                         day_seq = it.daySeq,
-                        date = date.ifEmpty { currentDateFormat }
+                        date = date.ifEmpty { currentDateFormat },
+                        shop_id = shopId
                     )
                 }
             }
