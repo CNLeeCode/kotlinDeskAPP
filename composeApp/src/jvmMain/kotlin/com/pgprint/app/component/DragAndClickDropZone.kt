@@ -41,12 +41,14 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.PersistentCache
+import com.pgprint.app.utils.Utils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -69,7 +71,7 @@ fun DragAndClickDropZone(
 ) {
     val scope = rememberCoroutineScope()
     var imageCacheKey by remember {
-        mutableStateOf("kf-photo_0")
+        mutableStateOf("kf-photo_${Math.random()}")
     }
 
     Column(
@@ -128,6 +130,18 @@ fun DragAndClickDropZone(
                 Text("点击选择文件", color = AppColors.PrimaryColor)
             }
         }
+        Spacer(Modifier.height(10.dp))
+        Text("移除文件", color = Color.Gray,  fontSize = 14.sp, modifier = Modifier.clickable(
+            onClick = {
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        Utils.deleteFile(File(targetDirPath,"kf-photo.jpg"))
+                    }
+                    delay(500)
+                    imageCacheKey = "kf-photo_${Math.random()}"
+                }
+            }
+        ))
     }
 }
 

@@ -66,45 +66,36 @@ object PrintTemplate {
         printer.divider()
 
         /* ===== 商品表头 ===== */
-        printer.writeText("商品  数量            单价  金额")
+        printer.writeText("商品                  数量  单价")
         printer.feed(1)
         printer.divider()
         // 商品循环
 
        for ((index, value) in shopPrintOrderDetail.goodsList.withIndex()) {
-           printer.writeText("${index + 1}、${value.goodsName}")
-           printer.feed(1)
-           printer.writeText(value.barcode)
-           printer.feed(1)
+           printer.writeText("${index + 1}、${value.goodsName}\n")
+//           printer.writeText("${value.barcode}\n")
+          //  printer.writeText("${value.barcode}                  X${value.count} ${value.price} \n")
            /* ===== 商品 ===== */
            printer.product(
-               name = "  ",
+               name = value.barcode,
                qty = "X${value.count}",
-               total = "${value.price}"
+               total = value.price
            )
-           printer.feed(1)
        }
-
        // 商品循环
-
-
         printer.divider()
-
         /* ===== 金额汇总 ===== */
-        printer.lineLR("商品合计", "X${shopPrintOrderDetail.totalNum}  ${shopPrintOrderDetail.originalPrice}")
         printer.lineLR("配送费", shopPrintOrderDetail.shippingFee)
         printer.lineLR("包装费", shopPrintOrderDetail.packageBagMoney)
+        printer.lineLR("合计金额", "X${shopPrintOrderDetail.totalNum}  ${shopPrintOrderDetail.originalPrice}")
 //        printer.lineLR("优惠金额", "17.57")
-
         printer.divider()
-
         printer.bold(true)
         printer.lineLR("实付金额", shopPrintOrderDetail.totalFee)
         printer.bold(false)
-
         /* ===== 底部提示 ===== */
-        printer.writeText("\n${shopPrintOrderDetail.temperature}\n")
-
+        printer.writeText("${shopPrintOrderDetail.temperature}\n")
+        printer.writeText("我们的客服电话：${shopPrintOrderDetail.shopPhone}\n")
         val kfImageFile = File(PersistentCache.cacheDir.absolutePath,"kf-photo.jpg")
         if (kfImageFile.exists()) {
            printer.center()

@@ -32,6 +32,7 @@ import com.arkivanov.essenty.lifecycle.subscribe
 import com.pgprint.app.component.AppFooter
 import com.pgprint.app.router.DefaultRootComponent
 import com.pgprint.app.router.RootContent
+import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.AppStrings
 import com.pgprint.app.utils.CrashHandler
@@ -78,7 +79,7 @@ fun main() = application {
         )
     }
     val mainWindowState = rememberWindowState(
-        size = DpSize(1300.dp, 900.dp),
+        size = DpSize(1270.dp, 900.dp),
     )
 
     LifecycleController(lifecycle, mainWindowState)
@@ -127,7 +128,9 @@ fun main() = application {
                     }
                 }
                 if (!it) {
-                    RootContent(component = root, modifier = Modifier.fillMaxSize().background(Color.Blue))
+                    RootContent(component = root, modifier = Modifier.fillMaxSize().background(
+                        AppColors.WindowBackground)
+                    )
                 }
             }
         }

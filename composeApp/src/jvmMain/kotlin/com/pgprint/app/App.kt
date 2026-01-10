@@ -3,19 +3,35 @@ package com.pgprint.app
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.HorizontalScrollbar
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.LinearProgressIndicator
 import androidx.compose.material3.Badge
@@ -28,8 +44,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.compose.AppTheme
@@ -72,13 +92,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.jetbrains.skia.paragraph.TextBox
 import pgprint.composeapp.generated.resources.Res
 import pgprint.composeapp.generated.resources.change_shop
 import pgprint.composeapp.generated.resources.choosefile
 import pgprint.composeapp.generated.resources.log
 import kotlin.time.Duration.Companion.milliseconds
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, ExperimentalComposeUiApi::class)
 @Composable
 @Preview
 fun App(component: HomeComponent, modifier: Modifier = Modifier) {
@@ -98,7 +119,7 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
     val historyLog by HistoryLog.historyLog.collectAsState()
     val currentCheckedPrinter by PrintDevice.currentCheckedPrinterName.collectAsState()
     val checkedPrintPlatformAll by component.checkedPrintPlatformAll.collectAsState(false)
-
+    val printSingleFlow = component.printSingleFlow
     val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
     val printQueueFlow = PrintTask.printQueueFlow
     val refundNotice = PrintTask.refundNotice
@@ -144,6 +165,17 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
     }
 
     LaunchedEffect(true) {
+         currentCheckedPrinterDevice?.let { device ->
+            printSingleFlow.collect {
+                print("接收并且开始打印 $it")
+                withContext(Dispatchers.IO) {
+                    PrinterManager.print(device, PrintTemplate.templateV1(it))
+                }
+            }
+         }
+    }
+
+    LaunchedEffect(true) {
         refundNotice.filter { it > 0L }.collect {
             withContext(Dispatchers.IO) {
                 DesktopAudioPlayer.play("notice.wav")
@@ -156,6 +188,7 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
         PrintDevice.getPrintDeviceData()
     }
 
+    val stateVertical = rememberScrollState(0)
     AppTheme {
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -176,9 +209,8 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
                     onChangeShopAction = component::onChangeShopAction
                 )
                 LoggedView(
-                    modifier = modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
                     printDeviceData = printDeviceData,
-                    localNetworkStatusMessage = localNetworkStatus.message,
                     printPlatformState = printPlatform,
                     historyLog = historyLog,
                     checkedPrintPlatform = checkedPrintPlatform,
@@ -203,7 +235,12 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
                         uiScope.launch {
                             drawerState.open()
                         }
-                    }
+                    },
+                    onPrintDoc = component::printSingleDoc
+
+                )
+                AppFooter(
+                    text = localNetworkStatus.message
                 )
             }
         }
@@ -214,7 +251,6 @@ fun App(component: HomeComponent, modifier: Modifier = Modifier) {
 fun LoggedView(
     modifier: Modifier = Modifier,
     printDeviceData: PrintDeviceData,
-    localNetworkStatusMessage: String = "",
     printPlatformState: UiState<RequestResult<List<PrintPlatform>>>,
     checkedPrintPlatform: List<String>,
     historyLog: List<ConnectionInfo>,
@@ -228,14 +264,18 @@ fun LoggedView(
     onChangePrintPlatformAll: (Boolean) -> Unit,
     onClickPrintTest: () -> Unit,
     onClickOpenDrawer: () -> Unit,
+    onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
+    val scrollState = rememberScrollState()
     Column(
-        modifier = modifier.background(AppColors.WindowBackground).safeContentPadding().fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
     ) {
         HomeHeader(
             modifier = Modifier.fillMaxWidth().height(300.dp)
         ) {
-            val toolItemModifier = Modifier.widthIn(200.dp, 300.dp)
+            val toolItemModifier = Modifier.width(305.dp)
             ToolItem(
                 modifier = toolItemModifier,
                 title = AppStrings.choosePrintDeciveTitle,
@@ -295,10 +335,9 @@ fun LoggedView(
                 )
             }
         }
-
         Crossfade(
             targetState = printPlatformState,
-            modifier =  Modifier.fillMaxWidth().weight(1f),
+            modifier =  Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
             animationSpec = tween(
                 durationMillis = 1000,
                 delayMillis = 500,
@@ -331,22 +370,22 @@ fun LoggedView(
                 }
 
                 is UiState.Success<RequestResult<List<PrintPlatform>>> -> {
-                    val printPlatform =  state.data
+                    val printPlatform = state.data
                     printPlatform.data?.let {
+
                         PrintPlatformGrid(
-                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            modifier = Modifier.fillMaxWidth().heightIn(600.dp, ((it.size * 400 )+ (10 * (it.size - 1))).dp),
                             printPlatformList = it,
-                            printedOrderMapList = printedOrderMapList
+                            printedOrderMapList = printedOrderMapList,
+                            onPrintDoc = onPrintDoc
                         )
                     }
-
                 }
             }
         }
-        AppFooter(
-            text = localNetworkStatusMessage
-        )
     }
+
+
 }
 
 @Composable

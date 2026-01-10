@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.ShopPrintOrderItem
+import com.pgprint.app.router.LocalCurrentShopId
 import com.pgprint.app.utils.AppColors
 import kotlinx.coroutines.launch
 import java.awt.Toolkit
@@ -53,6 +54,7 @@ fun PrintPlatformGrid(
     modifier: Modifier = Modifier,
     printPlatformList: List<PrintPlatform>,
     printedOrderMapList: Map<String, MutableMap<String, ShopPrintOrderItem>>,
+    onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.FixedSize(size = 300.dp),
@@ -60,18 +62,23 @@ fun PrintPlatformGrid(
         state = rememberLazyGridState(),
         contentPadding =  PaddingValues(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        userScrollEnabled = false
     ) {
         items(printPlatformList,  key = { it.id }) {
             PrintPlatformGridItem(
                 platformName = it.label,
                 platformId = it.id,
                 printedOrderMapList = printedOrderMapList,
+                onPrintDoc = onPrintDoc,
             )
         }
     }
 }
 
+// 拷贝到粘贴板
+//  val selection = StringSelection(it.orderId)
+//  Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
 
 @Composable
 fun PrintPlatformGridItem(
@@ -79,9 +86,11 @@ fun PrintPlatformGridItem(
     platformName: String,
     platformId: String,
     printedOrderMapList: Map<String, MutableMap<String, ShopPrintOrderItem>>,
+    onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val clipboard = LocalClipboard.current
+//    val scope = rememberCoroutineScope()
+//    val clipboard = LocalClipboard.current
+    val localShopId = LocalCurrentShopId.current
     val lazyListState = rememberLazyListState()
     val textModifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(Color.White).padding(vertical = 10.dp, horizontal = 16.dp)
 
@@ -107,14 +116,21 @@ fun PrintPlatformGridItem(
                 state = lazyListState
             ) {
                 items(platformPrintedList, key = { it.orderId }) {
-                    Text("#${it.daySeq}", modifier = textModifier.clickable(
-                        onClick = {
-                            scope.launch {
-                                val selection = StringSelection(it.orderId)
-                                Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+                    Row (
+                        modifier = textModifier,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text("#${it.daySeq}", fontSize = 16.sp)
+                        PrintButton(
+                            btnText = "重打",
+                            onClick = remember(it.orderId, platformId, localShopId) {
+                                {
+                                    onPrintDoc(localShopId, platformId, it.orderId)
+                                }
                             }
-                        }
-                    ))
+                        )
+                    }
                     HorizontalDivider()
                 }
             }
@@ -125,5 +141,22 @@ fun PrintPlatformGridItem(
                 )
             )
         }
+    }
+}
+
+
+@Composable
+fun PrintButton(
+    modifier: Modifier = Modifier,
+    btnText: String = "",
+    onClick: () -> Unit = {}
+) {
+    Box(
+        modifier = modifier.clickable(
+            onClick = onClick
+        ).border(1.dp, AppColors.PrimaryColor, RoundedCornerShape(5.dp)).clip(RoundedCornerShape(5.dp)).padding(vertical = 5.dp, horizontal = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = btnText, fontSize = 14.sp, color = AppColors.PrimaryColor)
     }
 }

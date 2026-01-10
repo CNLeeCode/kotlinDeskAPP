@@ -6,6 +6,7 @@ import com.pgprint.app.componentScope
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.PrinterTarget
 import com.pgprint.app.model.RequestResult
+import com.pgprint.app.model.ShopPrintOrderDetail
 import com.pgprint.app.model.UiState
 import com.pgprint.app.model.UpdateState
 import com.pgprint.app.usb.printImage2
@@ -16,7 +17,11 @@ import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.utils.UpdateManager
 import io.ktor.client.call.body
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.http.Parameters
 import io.ktor.util.Platform
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,7 +51,10 @@ interface HomeComponent {
     val updateManagerState: StateFlow<UpdateState>
     val checkedPrintPlatformAll: MutableSharedFlow<Boolean>
 
+    val printSingleFlow: MutableSharedFlow<ShopPrintOrderDetail>
+
     val loading: MutableStateFlow<Boolean>
+
 
     fun refreshPrintPlatform()
     fun toLoginPage()
@@ -59,6 +67,9 @@ interface HomeComponent {
     fun onChangePrintPlatformAll(isAll: Boolean, platformIds: List<String>)
 
     fun onChangeShopAction()
+
+    fun printSingleDoc(shopId: String, wmId: String, daySeq: String)
+
 
 }
 
@@ -79,6 +90,8 @@ class DefaultHomeComponent (
     override val currentShopId = MutableStateFlow(shopId)
 
     override val callPrintPlatform = MutableSharedFlow<Unit>(1)
+
+    override val printSingleFlow = MutableSharedFlow<ShopPrintOrderDetail>(1)
 
     override val checkedPrintPlatformAll = MutableStateFlow(false)
 
@@ -193,4 +206,31 @@ class DefaultHomeComponent (
             }
         }
     }
+
+    override fun printSingleDoc(shopId: String,  wmId: String, daySeq: String) {
+        scope.launch {
+            val printData =  withContext(Dispatchers.IO) {
+                runCatching {
+                    AppRequest.client.post("getOrder") {
+                        setBody(
+                            FormDataContent(
+                                Parameters.build {
+                                    append("wmid", wmId)
+                                    append("shopid", shopId)
+                                    append("day_seq", daySeq)
+                                    append("secret", "panyishigedashuaige")
+
+                                }
+                            )
+                        )
+                    }.body<RequestResult<ShopPrintOrderDetail>>()
+                }.getOrNull()
+            }
+            printData?.data?.let {
+                print("printData $it")
+                printSingleFlow.emit(it)
+            }
+        }
+    }
+
 }

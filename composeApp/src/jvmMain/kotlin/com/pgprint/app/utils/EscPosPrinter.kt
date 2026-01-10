@@ -164,7 +164,7 @@ class EscPosPrinter(
         fileToBufferedImage(file)?.let {
             // 构造 EscPosImage
             val escposImage = withContext(Dispatchers.Default) {
-                val scaleImage = resizeBufferedImage(it, 380, 380)
+                val scaleImage = Utils.fileToBufferedImageWithFourMargin(it, 380, 380, 80, 80, 2, 10)
                 val coffeeImage =  CoffeeImageImpl(scaleImage)
                 // 选择二值化算法（简单阈值最常用）
                 val bitonalAlgorithm = BitonalThreshold()
@@ -194,24 +194,32 @@ class EscPosPrinter(
        return null
     }
 
+
     fun resizeBufferedImage(
         src: BufferedImage,
-        targetWidth: Int,
-        targetHeight: Int
+        canvasW: Int,
+        canvasH: Int
     ): BufferedImage {
-        val target = BufferedImage(
-            targetWidth,
-            targetHeight,
-            BufferedImage.TYPE_INT_ARGB
-        )
-        val g2d = target.createGraphics()
-        g2d.setRenderingHint(
-            RenderingHints.KEY_INTERPOLATION,
-            RenderingHints.VALUE_INTERPOLATION_BILINEAR
-        )
-        g2d.drawImage(src, 0, 0, targetWidth, targetHeight, null)
+        val canvas = BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB)
+        val g2d = canvas.createGraphics()
+
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        // 背景填充白色（方便打印机识别）
+        g2d.fillRect(0, 0, canvasW, canvasH)
+
+        val scale = minOf(canvasW.toDouble() / src.width, canvasH.toDouble() / src.height)
+        val drawW = (src.width * scale).toInt()
+        val drawH = (src.height * scale).toInt()
+
+        val x = (canvasW - drawW) / 2
+        val y = (canvasH - drawH) / 2
+
+        g2d.drawImage(src, x, y, drawW, drawH, null)
         g2d.dispose()
 
-        return target
+        return canvas
     }
 }

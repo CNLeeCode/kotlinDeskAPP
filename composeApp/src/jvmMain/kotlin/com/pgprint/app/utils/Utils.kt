@@ -3,8 +3,11 @@ package com.pgprint.app.utils
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.common.BitMatrix
+import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -44,7 +47,7 @@ object Utils {
         return instant.atZone(zone).format(formatter)
     }
 
-    fun generateCode128BarcodeImage(data: String, width: Int = 384, height: Int = 100, bottomMargin: Int = 10): BufferedImage {
+    fun generateCode128BarcodeImage(data: String, width: Int = 384, height: Int = 80, bottomMargin: Int = 10): BufferedImage {
         val bitMatrix: BitMatrix = MultiFormatWriter().encode(data, BarcodeFormat.CODE_128, width, height)
 
         // 新图高度 = 原高度 + 下间距
@@ -68,6 +71,55 @@ object Utils {
         return image
     }
 
+    /**
+     * 读取图片文件并生成指定大小的 BufferedImage，内容居中，四周留白可调
+     *
+     * @param file 图片文件
+     * @param canvasWidth 最终 BufferedImage 宽度（例如打印机像素宽度）
+     * @param canvasHeight 最终 BufferedImage 高度
+     * @param margin 四周留白像素
+     */
+    fun fileToBufferedImageWithFourMargin(
+        src: BufferedImage,
+        canvasWidth: Int,
+        canvasHeight: Int,
+        marginLeft: Int = 0,
+        marginRight: Int = 0,
+        marginTop: Int = 0,
+        marginBottom: Int = 0
+    ): BufferedImage? {
+
+        val availableWidth = canvasWidth - marginLeft - marginRight
+        val availableHeight = canvasHeight - marginTop - marginBottom
+
+        // 等比缩放，但不超过可用宽高
+        val scale = minOf(
+            availableWidth.toDouble() / src.width,
+            availableHeight.toDouble() / src.height,
+            1.0 // 不放大
+        )
+
+        val drawW = (src.width * scale).toInt()
+        val drawH = (src.height * scale).toInt()
+
+        // 绘制位置严格在指定边距内
+        val x = marginLeft + (availableWidth - drawW) / 2
+        val y = marginTop + (availableHeight - drawH) / 2
+
+        val canvas = BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_ARGB)
+        val g2d = canvas.createGraphics()
+
+        g2d.fillRect(0, 0, canvasWidth, canvasHeight)
+
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY)
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+
+        g2d.drawImage(src, x, y, drawW, drawH, null)
+        g2d.dispose()
+        return canvas
+    }
+
     fun hasMiddleSpace(str: String): Boolean {
         return Regex("\\S\\s+\\S").containsMatchIn(str)
     }
@@ -87,6 +139,15 @@ object Utils {
 
     fun getAudioFile(fileName: String): File {
         return File(getResourcesDir(), "audio/$fileName")
+    }
+
+    fun deleteFile(file: File): Boolean {
+        return try {
+            Files.deleteIfExists(file.toPath())
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
     }
 
 }

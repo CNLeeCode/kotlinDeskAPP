@@ -54,10 +54,10 @@ fun HomeHeader(
 ) {
 
     Row (
-        modifier = modifier.background(AppColors.HeaderBackground).padding(horizontal = 20.dp).horizontalScroll(
+        modifier = modifier.background(AppColors.HeaderBackground).padding(horizontal = 10.dp).padding(top = 10.dp).horizontalScroll(
             state = rememberScrollState()
         ),
-        horizontalArrangement = Arrangement.spacedBy(20.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         content()
     }
