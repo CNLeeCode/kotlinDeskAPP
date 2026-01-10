@@ -53,7 +53,7 @@ import java.awt.datatransfer.StringSelection
 fun PrintPlatformGrid(
     modifier: Modifier = Modifier,
     printPlatformList: List<PrintPlatform>,
-    printedOrderMapList: Map<String, MutableMap<String, ShopPrintOrderItem>>,
+    printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
     onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -85,7 +85,7 @@ fun PrintPlatformGridItem(
     modifier: Modifier = Modifier,
     platformName: String,
     platformId: String,
-    printedOrderMapList: Map<String, MutableMap<String, ShopPrintOrderItem>>,
+    printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
     onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
 //    val scope = rememberCoroutineScope()

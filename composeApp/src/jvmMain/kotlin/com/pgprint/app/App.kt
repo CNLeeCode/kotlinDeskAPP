@@ -256,7 +256,7 @@ fun LoggedView(
     historyLog: List<ConnectionInfo>,
     currentCheckedPrinter: String,
     checkedPrintPlatformAll: Boolean,
-    printedOrderMapList: Map<String, MutableMap<String, ShopPrintOrderItem>>,
+    printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
     getPrintDeviceData: () -> Unit,
     refreshPrintPlatform: () -> Unit,
     onChangeCheckedPrintPlatform: (wmId: String) -> Unit,
