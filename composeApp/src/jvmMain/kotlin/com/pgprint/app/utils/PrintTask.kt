@@ -45,7 +45,7 @@ object PrintTask {
     // 存储当前正在运行的任务 Job
     private val activeJobs = ConcurrentHashMap<String, Job>()
     // 存储已打印的订单号，防止重复打印 (建议生产环境持久化)
-    private val printedOrderIds = MutableStateFlow<Map<String, MutableMap<String, ShopPrintOrderItem>>>(emptyMap())
+    private val printedOrderIds = MutableStateFlow<Map<String, Map<String, ShopPrintOrderItem>>>(emptyMap())
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
 
@@ -204,13 +204,19 @@ object PrintTask {
         date: String = "",
         shopId: String = ""
     ) {
-        printedOrderIds.update { map ->
-            val newMap = map.toMutableMap()
-            val orderMap = newMap.getOrPut(platformId) { mutableMapOf() }
-            orders.forEach { order ->
-                orderMap[order.orderId] =  order
+        printedOrderIds.update { oldMap ->
+
+            val oldPlatformMap = oldMap[platformId].orEmpty()
+
+            val newPlatformMap = oldPlatformMap.toMutableMap().apply {
+                orders.forEach { order ->
+                    put(order.orderId, order)
+                }
             }
-            newMap
+
+            oldMap.toMutableMap().apply {
+                put(platformId, newPlatformMap)
+            }
         }
         scope.launch {
             markPrintedDb(

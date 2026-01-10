@@ -126,7 +126,7 @@ object Utils {
 
     fun getResourcesDir(): File {
         // 1. 获取程序运行时的路径
-        val appPath = System.getProperty("compose.application.resources.dir")
+        val appPath = System.getProperty("compose.application.extraResources.dir")
 
         return if (appPath != null) {
             // 说明是打包后的安装环境

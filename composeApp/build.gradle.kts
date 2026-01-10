@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = "1.0.0"
+val myAppVersion = "1.0.4"
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -19,7 +19,6 @@ buildConfig {
     buildConfigField("APP_VERSION", myAppVersion)
     buildConfigField("STORED_DIR", "pgprint")
     buildConfigField("STORED_PREFX", "pgprint_")
-
 }
 
 kotlin {
