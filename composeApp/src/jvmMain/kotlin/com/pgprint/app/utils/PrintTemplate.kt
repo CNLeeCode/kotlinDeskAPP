@@ -87,7 +87,7 @@ object PrintTemplate {
         /* ===== 金额汇总 ===== */
         printer.lineLR("配送费", shopPrintOrderDetail.shippingFee)
         printer.lineLR("包装费", shopPrintOrderDetail.packageBagMoney)
-        printer.lineLR("合计金额", "X${shopPrintOrderDetail.totalNum}  ${shopPrintOrderDetail.originalPrice}")
+        printer.lineLR("商品金额", "X${shopPrintOrderDetail.totalNum}  ${shopPrintOrderDetail.originalPrice}")
 //        printer.lineLR("优惠金额", "17.57")
         printer.divider()
         printer.bold(true)

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pgprint.app.model.PrinterTarget
 import com.pgprint.app.utils.DesktopAudioPlayer
+import com.pgprint.app.utils.DesktopTool
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Close_circle_fill
@@ -102,6 +103,17 @@ fun SettingView(
             modifier = Modifier.fillMaxSize(),
             state = lazyListState
         ) {
+            item (key = "9999") {
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        DesktopTool.openBrowser("http://wm.butsdgc.com/index.php/Home/MgTest/")
+                    },
+                    shape = CutCornerShape(2.dp),
+                ) {
+                    Text("管理后台")
+                }
+            }
             item (key = "0000") {
                 Button(
                     modifier = Modifier.fillMaxWidth(),
@@ -128,7 +140,8 @@ fun SettingView(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         scope.launch {
-                            DesktopAudioPlayer.play("notice.wav", true)
+                            val url = ClassLoader.getSystemResource("notice.wav")
+                            DesktopAudioPlayer.play2(url, true)
                         }
                     },
                     shape = CutCornerShape(2.dp),

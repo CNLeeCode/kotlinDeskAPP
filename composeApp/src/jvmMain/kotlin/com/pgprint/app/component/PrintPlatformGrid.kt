@@ -43,17 +43,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.ShopPrintOrderItem
-import com.pgprint.app.router.LocalCurrentShopId
 import com.pgprint.app.utils.AppColors
-import kotlinx.coroutines.launch
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
+import com.pgprint.app.utils.Utils
 
 @Composable
 fun PrintPlatformGrid(
     modifier: Modifier = Modifier,
     printPlatformList: List<PrintPlatform>,
     printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
+    shopId: String,
     onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -70,6 +68,7 @@ fun PrintPlatformGrid(
                 platformName = it.label,
                 platformId = it.id,
                 printedOrderMapList = printedOrderMapList,
+                shopId = shopId,
                 onPrintDoc = onPrintDoc,
             )
         }
@@ -85,12 +84,10 @@ fun PrintPlatformGridItem(
     modifier: Modifier = Modifier,
     platformName: String,
     platformId: String,
+    shopId: String,
     printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
     onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
-//    val scope = rememberCoroutineScope()
-//    val clipboard = LocalClipboard.current
-    val localShopId = LocalCurrentShopId.current
     val lazyListState = rememberLazyListState()
     val textModifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(Color.White).padding(vertical = 10.dp, horizontal = 16.dp)
 
@@ -122,14 +119,30 @@ fun PrintPlatformGridItem(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text("#${it.daySeq}", fontSize = 16.sp)
-                        PrintButton(
-                            btnText = "重打",
-                            onClick = remember(it.orderId, platformId, localShopId) {
-                                {
-                                    onPrintDoc(localShopId, platformId, it.orderId)
+                        Row (
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            PrintButton(
+                                btnText = "重打",
+                                onClick = remember(it.orderId, platformId, shopId) {
+                                    {
+                                        onPrintDoc(shopId, platformId, it.orderId)
+                                    }
                                 }
-                            }
-                        )
+                            )
+
+                            PrintButton(
+                                btnText = "复单",
+                                onClick = remember(it.orderId) {
+                                    {
+                                        Utils.copyToClipboard(it.orderId)
+                                    }
+                                }
+                            )
+
+                        }
+
                     }
                     HorizontalDivider()
                 }

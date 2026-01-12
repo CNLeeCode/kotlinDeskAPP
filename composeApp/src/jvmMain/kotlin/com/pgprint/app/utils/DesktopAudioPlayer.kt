@@ -1,5 +1,8 @@
 package com.pgprint.app.utils
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.Clip
 
@@ -31,8 +34,9 @@ object DesktopAudioPlayer {
             }
 
             // 1. 获取音频输入流
-            val audioStream = AudioSystem.getAudioInputStream(file)
-
+            val audioStream = withContext(Dispatchers.IO) {
+                AudioSystem.getAudioInputStream(file)
+            }
             // 2. 获取 Clip 实例
             val currentClip = AudioSystem.getClip()
 
@@ -49,6 +53,44 @@ object DesktopAudioPlayer {
             }
 
             // 播放完成后自动释放资源（可选）
+            currentClip.addLineListener { event ->
+                if (event.type == javax.sound.sampled.LineEvent.Type.STOP) {
+                    currentClip.close()
+                }
+            }
+
+        } catch (e: Exception) {
+            println("播放失败: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    suspend fun play2(url: URL, forced: Boolean = false) {
+
+        val currentTime = System.currentTimeMillis()
+
+        if (!forced && currentTime - lastPlayTime < COOL_DOWN_MILLIS) {
+            val remainingSeconds =
+                (COOL_DOWN_MILLIS - (currentTime - lastPlayTime)) / 1000
+            println("播放过于频繁，冷却中，剩余: ${remainingSeconds}s")
+            return
+        }
+
+        try {
+            // 1️⃣ 只把「流读取」放到 IO
+            val audioStream = withContext(Dispatchers.IO) {
+                AudioSystem.getAudioInputStream(url)
+            }
+
+            // 2️⃣ 所有 Clip 操作在当前线程
+            stop()
+            val currentClip = AudioSystem.getClip()
+            currentClip.open(audioStream)
+            currentClip.start()
+
+            clip = currentClip
+            if (!forced) lastPlayTime = currentTime
+
             currentClip.addLineListener { event ->
                 if (event.type == javax.sound.sampled.LineEvent.Type.STOP) {
                     currentClip.close()

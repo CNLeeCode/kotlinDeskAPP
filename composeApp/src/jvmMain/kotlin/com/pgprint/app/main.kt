@@ -5,14 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalMinimumInteractiveComponentEnforcement
 import androidx.compose.material.Text
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,11 +40,13 @@ import com.pgprint.app.router.RootContent
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.AppStrings
+import com.pgprint.app.utils.AppToast
 import com.pgprint.app.utils.CrashHandler
 import com.pgprint.app.utils.DatabaseManager
 import com.pgprint.app.utils.DesktopTool
 import com.pgprint.app.utils.PersistentCache
 import com.pgprint.app.utils.PrintTask
+import com.pgprint.app.utils.UpdateManager
 import com.pgprint.app.utils.Utils
 import io.ktor.client.request.head
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +54,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Res
@@ -89,49 +97,44 @@ fun main() = application {
         title = "${AppStrings.appName}${version}",
         state = mainWindowState,
     ) {
-        var loading by remember {
-            mutableStateOf(true)
-        }
+        val snackBarHostState = remember { SnackbarHostState() }
+        val appToastFLow = AppToast.toastMsg
         MenuBar {
             Menu("菜单", mnemonic = 'F') {
-                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
+//                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
+                Item("常见问题", onClick = { Utils.openFAQPage() }, icon = painterResource(Res.drawable.cjwt))
+                Item("前往下载", onClick = { Utils.openDownloadPage() }, icon = painterResource(Res.drawable.update))
                 Separator() // 分割线
                 Item("退出", onClick = ::exitApplication , icon = painterResource(Res.drawable.exit))
             }
 
             Menu("帮助") {
-                Item("常见问题", onClick = { DesktopTool.openBrowser("https://www.baidu.com") }, icon = painterResource(Res.drawable.cjwt))
-                Item("检查更新", onClick = { }, icon = painterResource(Res.drawable.update))
                 Item("错误日志", onClick = CrashHandler::onHandleOpenLogFolder, icon = painterResource(Res.drawable.log))
                 Item("缓存地址", onClick = PersistentCache::openCatchDir, icon = painterResource(Res.drawable.file))
                 Separator() // 分割线
                 Item("关于PG打印", onClick = { }, icon = painterResource(Res.drawable.copyright))
             }
         }
+
         LaunchedEffect(true) {
-             delay(60)
-             loading = false
+            appToastFLow.filter { i -> i.isNotEmpty() }.collect {
+                snackBarHostState.showSnackbar(it)
+            }
         }
 
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentEnforcement provides false
         ) {
-            AnimatedContent(
-                targetState = loading,
-                label = "size transform"
-            ) {
-                if (it) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center,
-                    ) {
-                        Text("正在初始化...", fontSize = 16.sp)
-                    }
-                }
-                if (!it) {
-                    RootContent(component = root, modifier = Modifier.fillMaxSize().background(
-                        AppColors.WindowBackground)
-                    )
-                }
+            Box {
+                RootContent(component = root, modifier = Modifier.fillMaxSize().background(
+                    AppColors.WindowBackground)
+                )
+                SnackbarHost(
+                    hostState = snackBarHostState,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter) // 这里控制位置：TopCenter, TopStart 等
+                        .padding(top = 20.dp)       // 避免贴太紧
+                )
             }
         }
     }

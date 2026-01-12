@@ -2,7 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
 val myAppVersion = "1.0.4"
-
+val DOMAIN_URL = "http://39.98.37.44"
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
@@ -18,7 +18,7 @@ buildConfig {
     packageName("com.pgprint.app") // 明确指定包名
     buildConfigField("APP_VERSION", myAppVersion)
     buildConfigField("STORED_DIR", "pgprint")
-    buildConfigField("STORED_PREFX", "pgprint_")
+    buildConfigField("DOMAIN_URL", DOMAIN_URL)
 }
 
 kotlin {
@@ -107,7 +107,6 @@ compose.desktop {
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"
             description = "2025 BUTCOMPANY"
-            appResourcesRootDir.set(project.layout.projectDirectory.dir("extraResources"))
             windows {
                 menuGroup = "pgprinter"
                 shortcut = true
@@ -134,6 +133,7 @@ sqldelight {
         }
     }
 }
+
 
 
 

@@ -11,8 +11,10 @@ import com.pgprint.app.model.UiState
 import com.pgprint.app.model.UpdateState
 import com.pgprint.app.usb.printImage2
 import com.pgprint.app.utils.AppRequest
+import com.pgprint.app.utils.AppToast
 import com.pgprint.app.utils.DataStored
 import com.pgprint.app.utils.HistoryLog
+import com.pgprint.app.utils.NetworkCheck
 import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.utils.UpdateManager
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -48,7 +51,7 @@ interface HomeComponent {
     val printPlatform: StateFlow<UiState<RequestResult<List<PrintPlatform>>>>
     val printPlatformIds: StateFlow<List<String>>
     val checkedPrintPlatform: StateFlow<List<String>>
-    val updateManagerState: StateFlow<UpdateState>
+//    val updateManagerState: StateFlow<UpdateState>
     val checkedPrintPlatformAll: MutableSharedFlow<Boolean>
 
     val printSingleFlow: MutableSharedFlow<ShopPrintOrderDetail>
@@ -60,7 +63,7 @@ interface HomeComponent {
     fun toLoginPage()
     fun saveCurrentCheckedPrinter (printName: String)
     fun onChangeCheckedPrintPlatform(wmId: String)
-    fun updateManagerDownLoad(url: String)
+   //  fun updateManagerDownLoad(url: String)
 
     fun onClickPrintTest(currentCheckedPrinterDevice: PrinterTarget?)
 
@@ -75,7 +78,6 @@ interface HomeComponent {
 
 class DefaultHomeComponent (
     componentContext: ComponentContext,
-    shopId: String,
     val toLogin: () -> Unit,
 ): HomeComponent, ComponentContext by componentContext {
 
@@ -87,7 +89,11 @@ class DefaultHomeComponent (
 
     private val scope = componentContext.componentScope()
     // 当前门店ID
-    override val currentShopId = MutableStateFlow(shopId)
+    override val currentShopId = DataStored.shopIdFlow.filter { it.isNotEmpty() }.stateIn(
+        scope = scope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = ""
+    )
 
     override val callPrintPlatform = MutableSharedFlow<Unit>(1)
 
@@ -138,17 +144,17 @@ class DefaultHomeComponent (
     )
 
     //
-    override val updateManagerState = UpdateManager.state.stateIn(
-        scope,
-        SharingStarted.Eagerly,
-        UpdateState.Idle
-    )
+//    override val updateManagerState = UpdateManager.state.stateIn(
+//        scope,
+//        SharingStarted.Eagerly,
+//        UpdateState.Idle
+//    )
 
-    override fun updateManagerDownLoad(url: String) {
-        scope.launch {
-            UpdateManager.startUpdate(url)
-        }
-    }
+//    override fun updateManagerDownLoad(url: String) {
+//        scope.launch {
+//            UpdateManager.startUpdate(url)
+//        }
+//    }
 
 
     override fun saveCurrentCheckedPrinter (printName: String) {
@@ -199,6 +205,7 @@ class DefaultHomeComponent (
             onChangePrintPlatformAll(false, emptyList())
             PrintTask.clearPrintedOrderIds()
             HistoryLog.clearData()
+            NetworkCheck.stopKeepCheck()
             withContext(Dispatchers.Main) {
                 delay(1000)
                 loading.value = false
@@ -227,8 +234,10 @@ class DefaultHomeComponent (
                 }.getOrNull()
             }
             printData?.data?.let {
-                print("printData $it")
                 printSingleFlow.emit(it)
+            }
+            printData?.let {
+                AppToast.showToast(it.msg)
             }
         }
     }

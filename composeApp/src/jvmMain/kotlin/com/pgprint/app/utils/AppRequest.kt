@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
 import kotlinx.io.IOException
 import kotlinx.serialization.json.Json
+import com.pgprint.app.BuildConfig.DOMAIN_URL
 
 object AppRequest {
 
@@ -34,7 +35,7 @@ object AppRequest {
         expectSuccess = false
 
          defaultRequest {
-             url("http://39.98.37.44/index.php/Home/WmPrintLee/")
+             url("${DOMAIN_URL}/index.php/Home/WmPrintLee/")
         }
 
         install(ContentNegotiation) {

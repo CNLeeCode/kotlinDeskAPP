@@ -164,7 +164,7 @@ class EscPosPrinter(
         fileToBufferedImage(file)?.let {
             // 构造 EscPosImage
             val escposImage = withContext(Dispatchers.Default) {
-                val scaleImage = Utils.fileToBufferedImageWithFourMargin(it, 380, 380, 80, 80, 2, 10)
+                val scaleImage = Utils.fileToBufferedImageWithFourMargin(it, 380, 380, 20, 20, 2, 10)
                 val coffeeImage =  CoffeeImageImpl(scaleImage)
                 // 选择二值化算法（简单阈值最常用）
                 val bitonalAlgorithm = BitonalThreshold()

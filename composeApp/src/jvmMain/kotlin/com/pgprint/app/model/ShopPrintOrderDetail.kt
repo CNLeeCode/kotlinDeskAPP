@@ -61,7 +61,7 @@ data class ShopPrintOrderDetail(
     @SerialName("shipping_fee")
     val shippingFee: String = "",
 
-    @SerialName("original_price")
+    @SerialName("item_price")
     val originalPrice: String = "",
 
     @SerialName("total")

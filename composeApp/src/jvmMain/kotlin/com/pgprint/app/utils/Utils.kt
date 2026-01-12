@@ -13,7 +13,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.swing.SwingUtilities
-
+import com.pgprint.app.BuildConfig.DOMAIN_URL
+import java.awt.EventQueue
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 
 object Utils {
 
@@ -147,6 +150,38 @@ object Utils {
         } catch (e: Exception) {
             e.printStackTrace()
             false
+        }
+    }
+
+    fun compareVersion(v1: String, v2: String): Int {
+        val p1 = v1.split(".")
+        val p2 = v2.split(".")
+
+        val max = maxOf(p1.size, p2.size)
+
+        for (i in 0 until max) {
+            val n1 = p1.getOrNull(i)?.toIntOrNull() ?: 0
+            val n2 = p2.getOrNull(i)?.toIntOrNull() ?: 0
+
+            if (n1 != n2) {
+                return n1.compareTo(n2)
+            }
+        }
+        return 0
+    }
+
+    fun openDownloadPage() {
+        DesktopTool.openBrowser("${DOMAIN_URL}/index.php/Home/WmPrintLee/getDownloadPage")
+    }
+
+    fun openFAQPage() {
+        DesktopTool.openBrowser("${DOMAIN_URL}/index.php/Home/WmPrintLee/faq")
+    }
+
+    fun copyToClipboard(text: String) {
+        EventQueue.invokeLater {
+            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
+            clipboard.setContents(StringSelection(text), null)
         }
     }
 

@@ -22,6 +22,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,10 +40,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pgprint.app.router.LocalNetworkStatus
 import com.pgprint.app.router.component.LoginComponent
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.DataStored
+import com.pgprint.app.utils.NetworkCheck
 import com.pgprint.app.utils.PrintTask
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
@@ -56,7 +57,7 @@ fun Login(
     component: LoginComponent,
     modifier: Modifier = Modifier,
 ) {
-    val localNetworkStatus = LocalNetworkStatus.current
+    val localNetworkStatus by NetworkCheck.networkStatusData.collectAsState()
     val textFieldState = rememberTextFieldState("")
     var loading by remember {
         mutableStateOf(false)
@@ -70,6 +71,10 @@ fun Login(
                 component.toHomeAction(storedShopId)
             }
         }
+    }
+
+    LaunchedEffect(true) {
+        NetworkCheck.singleCheck()
     }
 
     val toHomePage = remember {
