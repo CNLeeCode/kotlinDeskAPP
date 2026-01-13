@@ -233,12 +233,15 @@ class DefaultHomeComponent (
                     }.body<RequestResult<ShopPrintOrderDetail>>()
                 }.getOrNull()
             }
-            printData?.data?.let {
-                printSingleFlow.emit(it)
-            }
+
             printData?.let {
                 AppToast.showToast(it.msg)
             }
+
+            printData?.data?.let {
+                printSingleFlow.emit(it)
+            }
+            
         }
     }
 

@@ -1,8 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = "1.0.4"
+val myAppVersion = "1.0.0"
 val DOMAIN_URL = "http://39.98.37.44"
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)

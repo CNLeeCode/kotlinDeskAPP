@@ -3,8 +3,12 @@ package com.pgprint.app
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.ExperimentalMaterialApi
@@ -14,6 +18,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,10 +26,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.awt.SwingWindow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -55,6 +64,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Res
@@ -71,6 +81,7 @@ fun LifecycleOwner.componentScope(): CoroutineScope {
     lifecycle.subscribe(onDestroy = { scope.cancel() })
     return scope
 }
+
 
 @OptIn(ExperimentalMaterialApi::class)
 fun main() = application {
@@ -99,6 +110,9 @@ fun main() = application {
     ) {
         val snackBarHostState = remember { SnackbarHostState() }
         val appToastFLow = AppToast.toastMsg
+        var aboutWindowShow by remember {
+            mutableStateOf(false)
+        }
         MenuBar {
             Menu("菜单", mnemonic = 'F') {
 //                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
@@ -112,7 +126,7 @@ fun main() = application {
                 Item("错误日志", onClick = CrashHandler::onHandleOpenLogFolder, icon = painterResource(Res.drawable.log))
                 Item("缓存地址", onClick = PersistentCache::openCatchDir, icon = painterResource(Res.drawable.file))
                 Separator() // 分割线
-                Item("关于PG打印", onClick = { }, icon = painterResource(Res.drawable.copyright))
+                Item("关于PG打印", onClick = { aboutWindowShow = true }, icon = painterResource(Res.drawable.copyright))
             }
         }
 
@@ -135,6 +149,29 @@ fun main() = application {
                         .align(Alignment.TopCenter) // 这里控制位置：TopCenter, TopStart 等
                         .padding(top = 20.dp)       // 避免贴太紧
                 )
+            }
+        }
+
+        if (aboutWindowShow) {
+            Window(
+                onCloseRequest = {
+                    aboutWindowShow = false
+                },
+                state = rememberWindowState(
+                    width = 400.dp,
+                    height = 180.dp
+                ),
+                title = "关于PG打印",
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(30.dp))
+                    Text(AppStrings.appName + "V" + version, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("©️" + AppStrings.copyright, fontSize = 14.sp)
+                }
             }
         }
     }

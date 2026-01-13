@@ -189,7 +189,6 @@ fun App(
     LaunchedEffect(true) {
         component.refreshPrintPlatform()
         PrintDevice.getPrintDeviceData()
-        UpdateManager.getCurrentAppVersion()
         NetworkCheck.keepCheck()
     }
 
@@ -206,10 +205,16 @@ fun App(
                         }
                         else -> emptyList()
                     },
-                    onClose = {
-                        uiScope.launch {
-                            drawerState.close()
-                            AppToast.showToast("你好哇！")
+                    onPrint = remember(shopId) {
+                        { daySeq, wmId ->
+                            component.printSingleDoc(shopId, wmId, daySeq)
+                        }
+                    },
+                    onClose = remember {
+                        {
+                            uiScope.launch {
+                                drawerState.close()
+                            }
                         }
                     }
                 )
@@ -252,13 +257,14 @@ fun App(
                         component.onChangePrintPlatformAll(it, if (it) printPlatformIds else emptyList())
                     }
                 },
-                onClickOpenDrawer = {
-                    uiScope.launch {
-                        drawerState.open()
+                onClickOpenDrawer = remember {
+                    {
+                        uiScope.launch {
+                            drawerState.open()
+                        }
                     }
                 },
                 onPrintDoc = component::printSingleDoc
-
             )
             AppFooter(
                 text = localNetworkStatus.message

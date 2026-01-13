@@ -3,12 +3,26 @@ package com.pgprint.app.utils
 import com.github.anastaciocintra.escpos.EscPosConst
 import com.github.anastaciocintra.escpos.Style
 import com.pgprint.app.model.ShopPrintOrderDetail
+import org.jetbrains.compose.resources.DrawableResource
+import pgprint.composeapp.generated.resources.Res
+import pgprint.composeapp.generated.resources.mt
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.net.URI
+import java.net.URL
 
 object PrintTemplate {
 
-   suspend fun templateV1(
+    private fun getPlatformUri(platform: String): URI? {
+        val map: Map<String, URL?> = mapOf(
+            "meituan" to  ClassLoader.getSystemResource("mttt.png"),
+        )
+        return runCatching {
+            map[platform]?.toURI()
+        }.getOrNull()
+    }
+
+    suspend fun templateV1(
         shopPrintOrderDetail: ShopPrintOrderDetail
     ): ByteArray {
         val out = ByteArrayOutputStream()
@@ -35,6 +49,13 @@ object PrintTemplate {
         printer.feed(1)
         printer.scaleTextSize(2,2)
         printer.center()
+//        val platformURI = getPlatformUri(shopPrintOrderDetail.platform)
+//        if ( platformURI != null) {
+//            val platformFile = ResourceCache.getOrCreate(platformURI,  "${shopPrintOrderDetail.platform}.png")
+//            printer.localImage2(platformFile)
+//        } else {
+//            printer.writeText("${shopPrintOrderDetail.platformName}\n", Style().setJustification(EscPosConst.Justification.Center))
+//        }
         printer.writeText("${shopPrintOrderDetail.platformName}\n", Style().setJustification(EscPosConst.Justification.Center))
         printer.bold(false)
         printer.feed(1)

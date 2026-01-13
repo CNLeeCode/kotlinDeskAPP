@@ -35,6 +35,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +52,7 @@ import pgprint.composeapp.generated.resources.Res
 fun DrawerContent(
     modifier: Modifier = Modifier,
     printPlatformList: List<PrintPlatform>,
+    onPrint: (daySeq: String, wmId: String) -> Unit,
     onClose: () -> Unit = {}
 ) {
 
@@ -119,11 +122,25 @@ fun DrawerContent(
                         focusedIndicatorColor = Color.Transparent,
                         unfocusedIndicatorColor = Color.Transparent,
                         disabledIndicatorColor = Color.Transparent
-                    )
+                    ),
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(Res.drawable.Close_circle_fill),
+                            contentDescription = "",
+                            modifier = Modifier.size(20.dp).pointerHoverIcon(PointerIcon.Hand).clickable(
+                                onClick = {
+                                    inputValue = ""
+                                }
+                            ),
+                            tint = Color.Gray
+                        )
+                    }
                 )
                 Button(
                     onClick = {
-
+                        if (inputValue.isNotEmpty()) {
+                            onPrint(inputValue, selected)
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AppColors.PrimaryColor,

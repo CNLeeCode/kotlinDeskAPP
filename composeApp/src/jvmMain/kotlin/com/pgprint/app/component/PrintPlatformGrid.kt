@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Text
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -44,7 +45,9 @@ import androidx.compose.ui.unit.sp
 import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.ShopPrintOrderItem
 import com.pgprint.app.utils.AppColors
+import com.pgprint.app.utils.AppToast
 import com.pgprint.app.utils.Utils
+import kotlinx.coroutines.launch
 
 @Composable
 fun PrintPlatformGrid(
@@ -88,6 +91,7 @@ fun PrintPlatformGridItem(
     printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>>,
     onPrintDoc: (shopId: String, wmId: String, daySeq: String) -> Unit,
 ) {
+    val scope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
     val textModifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)).background(Color.White).padding(vertical = 10.dp, horizontal = 16.dp)
 
@@ -99,6 +103,7 @@ fun PrintPlatformGridItem(
                 .orEmpty()
         }
     }
+
     Column(
         modifier = modifier.fillMaxSize().height(400.dp).border(1.dp, color = AppColors.HeaderBackground).background(AppColors.HeaderBackground, RoundedCornerShape(2.dp))
     ) {
@@ -136,11 +141,13 @@ fun PrintPlatformGridItem(
                                 btnText = "复单",
                                 onClick = remember(it.orderId) {
                                     {
+                                        scope.launch {
+                                            AppToast.showToast("复制成功：${it.orderId}")
+                                        }
                                         Utils.copyToClipboard(it.orderId)
                                     }
                                 }
                             )
-
                         }
 
                     }

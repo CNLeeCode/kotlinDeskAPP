@@ -14,6 +14,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.swing.SwingUtilities
 import com.pgprint.app.BuildConfig.DOMAIN_URL
+import org.jetbrains.compose.resources.DrawableResource
+import pgprint.composeapp.generated.resources.Res
+import pgprint.composeapp.generated.resources.mt
 import java.awt.EventQueue
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection

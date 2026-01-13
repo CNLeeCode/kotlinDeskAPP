@@ -176,6 +176,22 @@ class EscPosPrinter(
         }
     }
 
+    suspend fun localImage2(file: File) {
+        fileToBufferedImage(file)?.let {
+            // 构造 EscPosImage
+            val escposImage = withContext(Dispatchers.Default) {
+                val scaleImage = Utils.fileToBufferedImageWithFourMargin(it, 380, 80, 0, 0, 0, 0)
+                val coffeeImage =  CoffeeImageImpl(scaleImage)
+                // 选择二值化算法（简单阈值最常用）
+                val bitonalAlgorithm = BitonalThreshold()
+                EscPosImage(coffeeImage, bitonalAlgorithm)
+            }
+            // 选择打印用的 wrapper（比如 RasterBitImageWrapper 支持较快 raster 方式打印）
+            val imageWrapper = RasterBitImageWrapper()
+            escpos.write(imageWrapper, escposImage)
+        }
+    }
+
     /* ========== 二维码 ========= */
 
     fun qrcode(data: String, size: Int = 8) {

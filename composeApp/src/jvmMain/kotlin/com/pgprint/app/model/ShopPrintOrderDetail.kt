@@ -21,6 +21,9 @@ data class ShopPrintOrderGoodsItem(
 @Serializable
 data class ShopPrintOrderDetail(
 
+    @SerialName("wmid")
+    val platform: String= "",
+
     @SerialName("day_seq")
     val daySeq: String= "",
 

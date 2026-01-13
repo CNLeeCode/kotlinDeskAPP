@@ -18,11 +18,14 @@ import com.arkivanov.decompose.router.stack.replaceCurrent
 import com.arkivanov.decompose.value.Value
 import com.pgprint.app.App
 import com.pgprint.app.Login
+import com.pgprint.app.Splash
 import com.pgprint.app.componentScope
 import com.pgprint.app.router.component.DefaultHomeComponent
 import com.pgprint.app.router.component.DefaultLoginComponent
+import com.pgprint.app.router.component.DefaultSplashComponent
 import com.pgprint.app.router.component.HomeComponent
 import com.pgprint.app.router.component.LoginComponent
+import com.pgprint.app.router.component.SplashComponent
 import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.DataStored
 import io.ktor.client.plugins.timeout
@@ -41,6 +44,7 @@ interface RootComponent {
     val currentShopId: MutableStateFlow<String>
     // 定义可能的子页面
     sealed class Child {
+        class Splash(val component: SplashComponent): Child()
         class Home(val component: HomeComponent, val shopId: String) : Child()
         class Login(val component: LoginComponent) : Child()
     }
@@ -63,7 +67,7 @@ class DefaultRootComponent(
     override val childStack: Value<ChildStack<*, RootComponent.Child>> = childStack(
         source = navigation,
         serializer = Config.serializer(),
-        initialConfiguration = Config.Login, // 初始页面
+        initialConfiguration = Config.Splash, // 初始页面
         handleBackButton = true,
         childFactory = ::createChild
     )
@@ -84,6 +88,12 @@ class DefaultRootComponent(
                 ),
                 shopId = config.shopId
             )
+            is Config.Splash -> RootComponent.Child.Splash(DefaultSplashComponent(
+                context,
+                    toLogin = {
+                        navigation.replaceCurrent(Config.Login)
+                    }
+            ))
         }
     }
 
@@ -96,23 +106,24 @@ class DefaultRootComponent(
 
         @Serializable
         object Login : Config()
+
+        @Serializable
+        object Splash : Config()
     }
 }
 
 // val LocalCurrentShopId = staticCompositionLocalOf { "" }
 @Composable
 fun RootContent(component: RootComponent, modifier: Modifier = Modifier) {
-    val localCurrentShopId by component.currentShopId.collectAsState()
-   //  CompositionLocalProvider(LocalCurrentShopId provides localCurrentShopId) {
-        Children(
-            stack = component.childStack,
-            modifier = modifier,
-            animation = stackAnimation(fade()),
-        ) {
-            when (val child = it.instance) {
-                is RootComponent.Child.Login -> Login(component = child.component)
-                is RootComponent.Child.Home  -> App(shopId = child.shopId , component = child.component)
-            }
+    Children(
+        stack = component.childStack,
+        modifier = modifier,
+        animation = stackAnimation(fade()),
+    ) {
+        when (val child = it.instance) {
+            is RootComponent.Child.Splash -> Splash(component = child.component)
+            is RootComponent.Child.Login -> Login(component = child.component)
+            is RootComponent.Child.Home  -> App(shopId = child.shopId , component = child.component)
         }
-  // }
+    }
 }
