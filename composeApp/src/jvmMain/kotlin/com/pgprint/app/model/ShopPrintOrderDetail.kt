@@ -76,7 +76,7 @@ data class ShopPrintOrderDetail(
 ) {
     fun reserveOrderType(): String {
         if (orderType == "1") {
-            return "及时单"
+            return "即时单"
         }
         return "预约单"
     }

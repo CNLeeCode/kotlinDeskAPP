@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -428,7 +429,6 @@ fun AppHeaderView(
     val isNeedUpdate by derivedStateOf {
         Utils.compareVersion( APP_VERSION, appLastVersion.version) > 0
     }
-
     AppHeader(
         modifier = modifier.height(40.dp),
         leadingContent = {
@@ -436,7 +436,7 @@ fun AppHeaderView(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(currentShop, fontSize = 14.sp)
+                Text(currentShop, fontSize = 14.sp, lineHeight = 14.sp)
                 Icon(
                     painter = painterResource(Res.drawable.change_shop),
                     contentDescription = "change",
@@ -459,7 +459,7 @@ fun AppHeaderView(
                     }
                 )
 
-                Text("当前版本：${APP_VERSION}", fontSize = 14.sp, modifier = textModifier )
+                Text("当前版本：${APP_VERSION}", fontSize = 14.sp, modifier = textModifier , lineHeight = 14.sp )
 
                 if (!isNeedUpdate) {
                     Icon(

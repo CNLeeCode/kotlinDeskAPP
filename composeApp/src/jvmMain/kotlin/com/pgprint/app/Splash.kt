@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,9 +91,11 @@ fun Splash(
                         UiStateErrorView(
                             message = state.msg,
                             toLoginPage = component::toLoginPage,
-                            onRefresh = {
-                                scope.launch {
-                                    UpdateManager.getCurrentAppVersion()
+                            onRefresh = remember {
+                                {
+                                    scope.launch {
+                                        UpdateManager.getCurrentAppVersion()
+                                    }
                                 }
                             }
                         )
@@ -101,9 +104,7 @@ fun Splash(
                         UiStateUpdateView(
                             version = state.data.version,
                             toLoginPage = component::toLoginPage,
-                            toDownloadPage = {
-                                Utils.openDownloadPage()
-                            }
+                            toDownloadPage = Utils::openDownloadPage
                         )
                     }
                     is AppVersionState.Usual -> {
