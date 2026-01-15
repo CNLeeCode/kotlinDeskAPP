@@ -1,8 +1,8 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = "1.0.0"
-val DOMAIN_URL = "http://39.98.37.44"
+val myAppVersion = "1.0.1"
+val DOMAIN_URL = "http://wm.butsdgc.com"
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -115,7 +115,7 @@ compose.desktop {
                 dirChooser = true
                 upgradeUuid = "550e8400-e29b-41d4-a716-446655440000"
                 includeAllModules = true
-                console = true
+                // console = true
             }
             macOS {
                 bundleID = "com.pgprint.app"

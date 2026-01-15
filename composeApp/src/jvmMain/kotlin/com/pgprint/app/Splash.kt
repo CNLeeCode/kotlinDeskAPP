@@ -91,11 +91,9 @@ fun Splash(
                         UiStateErrorView(
                             message = state.msg,
                             toLoginPage = component::toLoginPage,
-                            onRefresh = remember {
-                                {
-                                    scope.launch {
-                                        UpdateManager.getCurrentAppVersion()
-                                    }
+                            onRefresh = {
+                                scope.launch {
+                                    UpdateManager.getCurrentAppVersion()
                                 }
                             }
                         )

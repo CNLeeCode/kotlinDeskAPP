@@ -211,68 +211,64 @@ fun App(
                             component.printSingleDoc(shopId, wmId, daySeq)
                         }
                     },
-                    onClose = remember {
-                        {
-                            uiScope.launch {
-                                drawerState.close()
-                            }
+                    onClose = {
+                        uiScope.launch {
+                            drawerState.close()
                         }
                     }
                 )
             }
         ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            if (loading) {
-                LinearProgressIndicator(
-                    color = AppColors.PrimaryColor,
-                    modifier = Modifier.fillMaxWidth(),
-                    backgroundColor = Color.White
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (loading) {
+                    LinearProgressIndicator(
+                        color = AppColors.PrimaryColor,
+                        modifier = Modifier.fillMaxWidth(),
+                        backgroundColor = Color.White
+                    )
+                }
+                AppHeaderView(
+                    currentShop = "当前门店：${shopId}",
+                    appLastVersion = appLastVersion,
+                    onChangeShopAction = component::onChangeShopAction,
                 )
-            }
-            AppHeaderView(
-                currentShop = "当前门店：${shopId}",
-                appLastVersion = appLastVersion,
-                onChangeShopAction = component::onChangeShopAction,
-            )
-            LoggedView(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                shopId = shopId,
-                printDeviceData = printDeviceData,
-                printPlatformState = printPlatform,
-                historyLog = historyLog,
-                checkedPrintPlatform = checkedPrintPlatform,
-                currentCheckedPrinter = currentCheckedPrinter,
-                printedOrderMapList = printedOrderMapList,
-                getPrintDeviceData = PrintDevice::getPrintDeviceData,
-                checkedPrintPlatformAll = checkedPrintPlatformAll,
-                refreshPrintPlatform = component::refreshPrintPlatform,
-                onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
-                onChangePrinter = component::saveCurrentCheckedPrinter,
-                onClickPrintTest = remember (currentCheckedPrinterDevice) {
-                    {
-                        component.onClickPrintTest(currentCheckedPrinterDevice)
-                    }
-                },
-                onChangePrintPlatformAll = remember(printPlatformIds) {
-                    {
-                        component.onChangePrintPlatformAll(it, if (it) printPlatformIds else emptyList())
-                    }
-                },
-                onClickOpenDrawer = remember {
-                    {
+                LoggedView(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    shopId = shopId,
+                    printDeviceData = printDeviceData,
+                    printPlatformState = printPlatform,
+                    historyLog = historyLog,
+                    checkedPrintPlatform = checkedPrintPlatform,
+                    currentCheckedPrinter = currentCheckedPrinter,
+                    printedOrderMapList = printedOrderMapList,
+                    getPrintDeviceData = PrintDevice::getPrintDeviceData,
+                    checkedPrintPlatformAll = checkedPrintPlatformAll,
+                    refreshPrintPlatform = component::refreshPrintPlatform,
+                    onChangeCheckedPrintPlatform = component::onChangeCheckedPrintPlatform,
+                    onChangePrinter = component::saveCurrentCheckedPrinter,
+                    onClickPrintTest = remember (currentCheckedPrinterDevice) {
+                        {
+                            component.onClickPrintTest(currentCheckedPrinterDevice)
+                        }
+                    },
+                    onChangePrintPlatformAll = remember(printPlatformIds) {
+                        {
+                            component.onChangePrintPlatformAll(it, if (it) printPlatformIds else emptyList())
+                        }
+                    },
+                    onClickOpenDrawer ={
                         uiScope.launch {
                             drawerState.open()
                         }
-                    }
-                },
-                onPrintDoc = component::printSingleDoc
-            )
-            AppFooter(
-                text = localNetworkStatus.message
-            )
+                    },
+                    onPrintDoc = component::printSingleDoc
+                )
+                AppFooter(
+                    text = localNetworkStatus.message
+                )
+            }
         }
     }
-}
 }
 
 @Composable
@@ -427,7 +423,7 @@ fun AppHeaderView(
 
     val scope = rememberCoroutineScope()
     val isNeedUpdate by derivedStateOf {
-        Utils.compareVersion( APP_VERSION, appLastVersion.version) > 0
+        Utils.compareVersion( appLastVersion.version, APP_VERSION) > 0
     }
     AppHeader(
         modifier = modifier.height(40.dp),
