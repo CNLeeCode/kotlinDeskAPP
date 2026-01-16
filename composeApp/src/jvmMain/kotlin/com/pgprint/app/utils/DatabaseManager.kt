@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter
 object DatabaseManager {
     private const val DB_NAME = "pgprint.db"
 
-    private const val DB_VERSION = 1 // 当前数据库版本
+    private const val DB_VERSION = 3 // 当前数据库版本
 
     val dbScope = CoroutineScope(
         Dispatchers.IO + SupervisorJob()
@@ -54,7 +54,6 @@ object DatabaseManager {
         try {
             if (!dbFile.exists() || dbFile.length() == 0L) {
                 createSchema(driver)
-                setUserVersion(driver, DB_VERSION)
             } else {
                 migrateSchema(driver)
             }
@@ -68,41 +67,68 @@ object DatabaseManager {
         driver.execute(
             null,
             """
-            CREATE TABLE ConnectionInfo (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                dateText TEXT NOT NULL,
-                createdAt INTEGER NOT NULL,
-                connectionDetail TEXT NOT NULL,
-                textColor TEXT DEFAULT '#07c160'
-            )
-            """.trimIndent(),
-            0
-        )
-        driver.execute(
-            null,
-            """
                CREATE TABLE printed_order (
                     platform_id TEXT NOT NULL,
                     order_id TEXT NOT NULL,
                     day_seq TEXT NOT NULL,
                     date TEXT NOT NULL,
                     shop_id TEXT DEFAULT '' ,
-                    PRIMARY KEY(platform_id, order_id)
+                    PRIMARY KEY(platform_id, order_id, shop_id)
                 );
-                CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date, shop_id);
             """.trimIndent(),
             0
         )
-
+        version1to2(driver)
+        setUserVersion(driver, DB_VERSION)
     }
 
     private fun migrateSchema(driver: SqlDriver) {
-        val currentVersion  = driver.execute(
+        val currentVersion = driver.execute(
             identifier = null,
             sql = "PRAGMA user_version;",
             parameters = 0
         ).value
-        setUserVersion(driver, currentVersion.toInt())
+
+        if (currentVersion < DB_VERSION) {
+            version1to2(driver)
+        }
+        setUserVersion(driver, DB_VERSION)
+    }
+
+    private fun version1to2(driver: SqlDriver) {
+        // printed_order 索引（和 createSchema 保持一致）
+        driver.execute(
+            null,
+            """
+                CREATE INDEX IF NOT EXISTS idx_printed_order_shop_date
+                ON printed_order(date, shop_id);
+            """.trimIndent(),
+            0
+        )
+        // cancel_order 表
+        driver.execute(
+            null,
+            """
+            CREATE TABLE IF NOT EXISTS cancel_order (
+                platform_id TEXT NOT NULL,
+                day_seq TEXT NOT NULL,
+                date TEXT NOT NULL,
+                order_id TEXT NOT NULL,
+                shop_id TEXT DEFAULT '',
+                PRIMARY KEY(shop_id, date, order_id)
+            );
+            """.trimIndent(),
+            0
+        )
+        // cancel_order 索引
+        driver.execute(
+            null,
+            """
+            CREATE INDEX IF NOT EXISTS idx_cancel_order_index
+            ON cancel_order(date, shop_id);
+            """.trimIndent(),
+            0
+        )
     }
 
 }

@@ -1,0 +1,33 @@
+
+
+-- 连接信息表
+CREATE TABLE cancel_order (
+    platform_id TEXT NOT NULL,
+    day_seq TEXT NOT NULL,
+    date TEXT NOT NULL,
+    order_id TEXT NOT NULL,
+    shop_id TEXT DEFAULT '' ,
+    PRIMARY KEY(shop_id, date, order_id)
+);
+
+CREATE INDEX idx_cancel_order_index ON cancel_order(date, shop_id);
+
+-- 插入数据
+insertConnection:
+INSERT OR IGNORE INTO cancel_order(platform_id , day_seq, date, shop_id, order_id)
+VALUES (?, ?, ?, ?, ?);
+
+-- 按日期查询
+selectByDate:
+SELECT * FROM cancel_order WHERE date = ? AND shop_id = ? ORDER BY day_seq ASC;
+
+-- 按日期删除（方便清理旧数据，有了索引此操作会非常快）
+deleteByDate:
+DELETE FROM cancel_order WHERE date = ? AND shop_id = ?;
+
+-- 清理某日期之前的所有旧数据
+deleteOlderThanDate:
+DELETE FROM cancel_order WHERE date < ? AND shop_id = ?;
+
+deleteAll:
+DELETE FROM cancel_order;

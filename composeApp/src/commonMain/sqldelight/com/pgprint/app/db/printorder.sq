@@ -10,7 +10,7 @@ CREATE TABLE printed_order (
     PRIMARY KEY(platform_id, order_id, shop_id)
 );
 
-CREATE INDEX idx_printed_order_time ON printed_order(platform_id, date);
+CREATE INDEX idx_printed_order_shop_date ON printed_order(shop_id, date);
 -- 插入数据
 insertConnection:
 INSERT OR IGNORE INTO printed_order(platform_id, order_id, day_seq, date, shop_id)

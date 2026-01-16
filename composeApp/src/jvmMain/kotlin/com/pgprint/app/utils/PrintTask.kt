@@ -196,6 +196,7 @@ object PrintTask {
         val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         val currentDateFormat: String = currentDate.format(formatter)
         DatabaseManager.database.printorderQueries.deleteOlderThanDate(currentDateFormat, shopId)
+        DatabaseManager.database.cancelQueries.deleteOlderThanDate(currentDateFormat, shopId)
     }
 
     fun markPrinted(
