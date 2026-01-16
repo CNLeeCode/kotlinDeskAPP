@@ -51,7 +51,7 @@ import javax.usb.UsbInterface
 
 
 fun getTestPrintData(): ByteArray {
-    val baos = java.io.ByteArrayOutputStream()
+    val baos = ByteArrayOutputStream()
 
     // 1. 初始化打印机 (ESC @)
     baos.write(byteArrayOf(0x1B, 0x40))
@@ -248,8 +248,7 @@ fun PrinterScannerScreen() {
         scanDevices()
     }
 
-    Scaffold(
-    ) {
+    Scaffold {
         Column(modifier = Modifier.fillMaxSize().padding(it)) {
             Button(onClick = { scanDevices() }, enabled = !isScanning) {
                 if (isScanning) {
@@ -289,7 +288,7 @@ fun PrinterCard(device: PrinterDevice) {
             }
             Button(onClick = {
                 // 测试指令：ESC @ (初始化) + "Hello Printer" + 换行
-                statusMessage = "";
+                statusMessage = ""
 //                val success = if (device.type == "系统驱动") {
 //                    PrintManager.printViaDriver(device.name, printImage())
 //                } else {

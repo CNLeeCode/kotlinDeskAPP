@@ -49,7 +49,7 @@ object DataStored  {
     }
 
     suspend fun saveShopId(shopId: String) {
-        stored.edit { it ->
+        stored.edit {
             it[SHOP_ID] = shopId
         }
     }

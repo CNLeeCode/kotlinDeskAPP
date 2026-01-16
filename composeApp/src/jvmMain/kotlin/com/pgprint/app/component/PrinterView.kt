@@ -32,8 +32,6 @@ fun PrinterView(modifier: Modifier = Modifier) {
 
 
 
-    var expanded by remember { mutableStateOf(false) }
-
     Image(
         painter = painterResource(Res.drawable.compose_multiplatform),
         contentDescription = "",

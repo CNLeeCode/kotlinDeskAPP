@@ -93,7 +93,7 @@ object Utils {
         marginRight: Int = 0,
         marginTop: Int = 0,
         marginBottom: Int = 0
-    ): BufferedImage? {
+    ): BufferedImage {
 
         val availableWidth = canvasWidth - marginLeft - marginRight
         val availableHeight = canvasHeight - marginTop - marginBottom

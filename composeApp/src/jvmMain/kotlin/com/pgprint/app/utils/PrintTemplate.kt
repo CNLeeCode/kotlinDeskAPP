@@ -3,9 +3,6 @@ package com.pgprint.app.utils
 import com.github.anastaciocintra.escpos.EscPosConst
 import com.github.anastaciocintra.escpos.Style
 import com.pgprint.app.model.ShopPrintOrderDetail
-import org.jetbrains.compose.resources.DrawableResource
-import pgprint.composeapp.generated.resources.Res
-import pgprint.composeapp.generated.resources.mt
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.URI
@@ -15,7 +12,7 @@ object PrintTemplate {
 
     private fun getPlatformUri(platform: String): URI? {
         val map: Map<String, URL?> = mapOf(
-            "meituan" to  ClassLoader.getSystemResource("mttt.png"),
+            "meituan" to ClassLoader.getSystemResource("mttt.png"),
         )
         return runCatching {
             map[platform]?.toURI()
@@ -37,17 +34,17 @@ object PrintTemplate {
         /* ===== 大号订单号 ===== */
         printer.doubleSize(true)
         if (Utils.hasMiddleSpace(shopPrintOrderDetail.daySeq)) {
-            printer.scaleTextSize(2,2)
+            printer.scaleTextSize(2, 2)
             printer.writeText("#${shopPrintOrderDetail.daySeq}\n")
         } else {
-            printer.scaleTextSize(3,3)
+            printer.scaleTextSize(3, 3)
             printer.writeText("#${shopPrintOrderDetail.daySeq}\n")
         }
         printer.doubleSize(false)
         /* ===== 平台 / 门店 ===== */
         printer.bold(true)
         printer.feed(1)
-        printer.scaleTextSize(2,2)
+        printer.scaleTextSize(2, 2)
         printer.center()
 //        val platformURI = getPlatformUri(shopPrintOrderDetail.platform)
 //        if ( platformURI != null) {
@@ -56,14 +53,25 @@ object PrintTemplate {
 //        } else {
 //            printer.writeText("${shopPrintOrderDetail.platformName}\n", Style().setJustification(EscPosConst.Justification.Center))
 //        }
-        printer.writeText("${shopPrintOrderDetail.platformName}\n", Style().setJustification(EscPosConst.Justification.Center))
+        printer.writeText(
+            "${shopPrintOrderDetail.platformName}\n",
+            Style().setJustification(EscPosConst.Justification.Center)
+        )
         printer.bold(false)
         printer.feed(1)
-        printer.scaleTextSize(1,1)
+        printer.scaleTextSize(1, 1)
         printer.center()
-        printer.writeText("${shopPrintOrderDetail.shopName}\n", Style().setJustification(EscPosConst.Justification.Center))
+        printer.writeText(
+            "${shopPrintOrderDetail.shopName}\n",
+            Style().setJustification(EscPosConst.Justification.Center)
+        )
         printer.writeText("用户联", Style().setJustification(EscPosConst.Justification.Center))
         /* ===== 条形码 ===== */
+//        if (shopPrintOrderDetail.platform == "jd") {
+//            printer.qrcode(shopPrintOrderDetail.orderId, 6)
+//        } else {
+//            printer.barcode(shopPrintOrderDetail.orderId)
+//        }
         printer.barcode(shopPrintOrderDetail.orderId)
         printer.center()
         printer.writeText(shopPrintOrderDetail.orderId, Style().setJustification(EscPosConst.Justification.Center))
@@ -85,25 +93,28 @@ object PrintTemplate {
         printer.writeText("${shopPrintOrderDetail.remarks}\n")
 
         printer.divider()
-
         /* ===== 商品表头 ===== */
-        printer.writeText("商品                  数量  单价")
-        printer.feed(1)
+        // printer.writeText("商品                  数量  单价")
+        printer.lineLR("商品", "数量  单价")
         printer.divider()
         // 商品循环
 
-       for ((index, value) in shopPrintOrderDetail.goodsList.withIndex()) {
-           printer.writeText("${index + 1}、${value.goodsName}\n")
-//           printer.writeText("${value.barcode}\n")
-          //  printer.writeText("${value.barcode}                  X${value.count} ${value.price} \n")
-           /* ===== 商品 ===== */
-           printer.product(
-               name = value.barcode,
-               qty = "X${value.count}",
-               total = value.price
-           )
-       }
-       // 商品循环
+        for ((index, value) in shopPrintOrderDetail.goodsList.withIndex()) {
+            printer.writeText("${index + 1}、${value.goodsName}\n")
+            /* ===== 商品 ===== */
+            if (value.barcode.isNotEmpty()) {
+                printer.product(
+                    name = value.barcode,
+                    qty = "X${value.count}",
+                    total = value.price
+                )
+            } else {
+                printer.right()
+                printer.writeText("X${value.count}  ${value.price}\n")
+            }
+        }
+        printer.left()
+        // 商品循环
         printer.divider()
         /* ===== 金额汇总 ===== */
         printer.lineLR("配送费", shopPrintOrderDetail.shippingFee)
@@ -116,11 +127,13 @@ object PrintTemplate {
         printer.bold(false)
         /* ===== 底部提示 ===== */
         printer.writeText("${shopPrintOrderDetail.temperature}\n")
-        printer.writeText("我们的客服电话：${shopPrintOrderDetail.shopPhone}\n")
-        val kfImageFile = File(PersistentCache.cacheDir.absolutePath,"kf-photo.jpg")
+        if (shopPrintOrderDetail.shopPhone.isNotEmpty()) {
+            printer.writeText("我们的客服电话：${shopPrintOrderDetail.shopPhone}\n")
+        }
+        val kfImageFile = File(PersistentCache.cacheDir.absolutePath, "kf-photo.jpg")
         if (kfImageFile.exists()) {
-           printer.center()
-           printer.localImage(kfImageFile)
+            printer.center()
+            printer.localImage(kfImageFile)
         }
 
         /* ===== 结束 ===== */

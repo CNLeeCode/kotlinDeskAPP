@@ -6,7 +6,4 @@ import kotlinx.coroutines.channels.Channel
 import java.awt.*
 import javax.swing.*
 
-object DesktopToastQueue {
-
-
-}
+object DesktopToastQueue

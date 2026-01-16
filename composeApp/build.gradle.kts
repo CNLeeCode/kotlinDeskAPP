@@ -2,8 +2,8 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
 val myAppVersion = "1.0.1"
-val DOMAIN_URL = "http://wm.butsdgc.com"
-
+val domainUrl = "http://wm.butsdgc.com"
+// val DOMAIN_URL = "http://39.98.37.44"
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
@@ -19,7 +19,7 @@ buildConfig {
     packageName("com.pgprint.app") // 明确指定包名
     buildConfigField("APP_VERSION", myAppVersion)
     buildConfigField("STORED_DIR", "pgprint")
-    buildConfigField("DOMAIN_URL", DOMAIN_URL)
+    buildConfigField("DOMAIN_URL", domainUrl)
 }
 
 kotlin {

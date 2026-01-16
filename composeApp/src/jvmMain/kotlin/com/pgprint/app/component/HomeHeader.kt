@@ -45,6 +45,9 @@ import com.pgprint.app.model.PrintPlatform
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.UiState
 import com.pgprint.app.utils.AppColors
+import org.jetbrains.compose.resources.painterResource
+import pgprint.composeapp.generated.resources.Res
+import pgprint.composeapp.generated.resources.wmpic
 
 
 @Composable
@@ -154,7 +157,9 @@ fun ChoosePlatformItem(
             AsyncImage(
                 model = platformImg,
                 contentDescription = "brand image",
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(20.dp),
+                error = painterResource(Res.drawable.wmpic),
+                placeholder = painterResource(Res.drawable.wmpic)
             )
         },
         trailingContent = {
