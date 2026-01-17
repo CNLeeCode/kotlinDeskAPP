@@ -145,7 +145,7 @@ object PrintTask {
             }
         }
         // 去重复订单
-        val filterOrders = filterUnprinted(platformId, orderIds.data)
+        val filterOrders = filterUnprinted(platformId, orderIds.data.distinctBy { it.orderId })
         if (filterOrders.isEmpty()) return emptyList()
         val orderDetails = withContext(Dispatchers.IO) {
             runCatching {
@@ -165,9 +165,9 @@ object PrintTask {
                 }.body<RequestResult<List<ShopPrintOrderDetail>>>()
             }.getOrNull()?.data.orEmpty()
         }
-        if (orderDetails.isEmpty()) return emptyList<ShopPrintOrderDetail>()
+        if (orderDetails.isEmpty()) return emptyList()
         createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
-        markPrinted(platformId, orderDetails.map { ShopPrintOrderItem( orderId = it.orderId, daySeq = it.daySeq) }, orderIds.date, shopId)
+        markPrinted(platformId, orderDetails.distinctBy { it.orderId }.map { ShopPrintOrderItem( orderId = it.orderId, daySeq = it.daySeq) }, orderIds.date, shopId)
         return orderDetails
     }
 

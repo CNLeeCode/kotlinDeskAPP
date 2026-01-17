@@ -102,16 +102,7 @@ object PrintTemplate {
         for ((index, value) in shopPrintOrderDetail.goodsList.withIndex()) {
             printer.writeText("${index + 1}、${value.goodsName}\n")
             /* ===== 商品 ===== */
-            if (value.barcode.isNotEmpty()) {
-                printer.product(
-                    name = value.barcode,
-                    qty = "X${value.count}",
-                    total = value.price
-                )
-            } else {
-                printer.right()
-                printer.writeText("X${value.count}  ${value.price}\n")
-            }
+            printer.lineLR(value.barcode.ifEmpty { "  " }, "X${value.count}  ${value.price}")
         }
         printer.left()
         // 商品循环
