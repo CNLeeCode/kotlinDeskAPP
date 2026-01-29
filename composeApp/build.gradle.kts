@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = "1.0.2"
+val myAppVersion = "1.0.3"
 val domainUrl = "http://wm.butsdgc.com"
 // val DOMAIN_URL = "http://39.98.37.44"
 plugins {

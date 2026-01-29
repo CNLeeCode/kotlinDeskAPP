@@ -14,7 +14,7 @@ object DesktopAudioPlayer {
     private var lastPlayTime: Long = 0
 
     // 定义冷却时间（30秒 = 30000毫秒）
-    private const val COOL_DOWN_MILLIS: Long = 60000
+    private const val COOL_DOWN_MILLIS: Long = 6000
 
     suspend fun play(fileName: String, forced: Boolean = false) {
 

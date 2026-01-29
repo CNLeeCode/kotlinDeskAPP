@@ -1,5 +1,7 @@
 package com.pgprint.app.utils
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.ShopPrintOrder
 import com.pgprint.app.model.ShopPrintOrderDetail
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNot
@@ -38,6 +41,7 @@ import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 
 object PrintTask {
+    val noticeMav = ClassLoader.getSystemResource("notice.wav")
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val dbDispatcher = Dispatchers.IO.limitedParallelism(1)
     private val printQueue = Channel<ShopPrintOrderDetail>(capacity = 9999)
@@ -53,7 +57,18 @@ object PrintTask {
 
     val refundNotice = MutableSharedFlow<Long>(0)
 
-
+    init {
+        scope.launch {
+            printQueueFlow.combine(PrintDevice.currentCheckedPrinterDevice) { data, device ->
+                device to data
+            }.filter { (device, _) -> device != null }
+                .collect {(device, data) ->
+                withContext(Dispatchers.IO) {
+                    PrinterManager.print(device!!, PrintTemplate.templateV1(data))
+                }
+            }
+        }
+    }
 
     /**
      * 更新平台列表：自动对比差异，增加新任务，取消移除的任务
@@ -82,9 +97,11 @@ object PrintTask {
         val job = scope.launch(Dispatchers.IO) {
             println("开始监听平台: $platformId")
             while (isActive) {
+                val startTime = System.currentTimeMillis()
+                println("开始 [$platformId] Time: $startTime")
                 try {
                     val printDetails = executePrintCycle2(platformId, shopId)
-                    println("打印 printDetails: $platformId : $printDetails")
+                   //  println("打印 printDetails: $platformId : $printDetails")
                     if (printDetails.isNotEmpty()) {
                         for (item in printDetails) {
                             printQueue.send(item)
@@ -106,6 +123,12 @@ object PrintTask {
         activeJobs[platformId]?.cancel()
         activeJobs.remove(platformId)
         println("停止监听平台: $platformId")
+    }
+
+    fun singlePrint(detail: ShopPrintOrderDetail) {
+        scope.launch {
+            printQueue.send(detail)
+        }
     }
 
     fun stopPollingTask() {
@@ -140,8 +163,8 @@ object PrintTask {
             return emptyList()
         }
         if (orderIds.refundNotice.isNotEmpty()) {
-            scope.launch {
-                refundNotice.tryEmit(System.currentTimeMillis())
+            scope.launch(Dispatchers.IO) {
+                DesktopAudioPlayer.play2(noticeMav)
             }
         }
         // 去重复订单

@@ -239,10 +239,8 @@ class DefaultHomeComponent (
             }
 
             printData?.data?.let {
-                printSingleFlow.emit(it)
+                PrintTask.singlePrint(it)
             }
-            
         }
     }
-
 }

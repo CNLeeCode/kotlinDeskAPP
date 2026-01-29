@@ -114,9 +114,9 @@ fun App(
     val historyLog by HistoryLog.historyLog.collectAsState()
     val currentCheckedPrinter by PrintDevice.currentCheckedPrinterName.collectAsState()
     val checkedPrintPlatformAll by component.checkedPrintPlatformAll.collectAsState(false)
-    val printSingleFlow = component.printSingleFlow
+     // val printSingleFlow = component.printSingleFlow
     val currentCheckedPrinterDevice by PrintDevice.currentCheckedPrinterDevice.collectAsState()
-    val printQueueFlow = PrintTask.printQueueFlow
+    // val printQueueFlow = PrintTask.printQueueFlow
     val refundNotice = PrintTask.refundNotice
 
     val printedOrderMapList by PrintTask.printedOrderMapList.collectAsState()
@@ -151,31 +151,6 @@ fun App(
                 else -> {}
             }
         }
-    }
-
-    LaunchedEffect(currentCheckedPrinterDevice) {
-        if (currentCheckedPrinterDevice == null) {
-            PrintTask.stopPollingTask()
-        }
-        currentCheckedPrinterDevice?.let { device ->
-            printQueueFlow.collect { data ->
-                print("接收并且开始打印 $data")
-                withContext(Dispatchers.IO) {
-                    PrinterManager.print(device, PrintTemplate.templateV1(data))
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(currentCheckedPrinterDevice) {
-         currentCheckedPrinterDevice?.let { device ->
-            printSingleFlow.collect {
-                print("接收并且开始打印 $it")
-                withContext(Dispatchers.IO) {
-                    PrinterManager.print(device, PrintTemplate.templateV1(it))
-                }
-            }
-         }
     }
 
     LaunchedEffect(true) {
