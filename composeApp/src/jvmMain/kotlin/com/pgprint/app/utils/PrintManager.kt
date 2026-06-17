@@ -38,9 +38,7 @@ object PrinterManager {
                 printViaSerial(target.portName, target.config, data)
         }
     }
-
     // ---------------- Driver ----------------
-
     private fun printViaDriver(
         service: PrintService,
         data: ByteArray

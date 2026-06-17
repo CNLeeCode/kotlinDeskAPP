@@ -1,7 +1,5 @@
 package com.pgprint.app.utils
 
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import com.pgprint.app.model.RequestResult
 import com.pgprint.app.model.ShopPrintOrder
 import com.pgprint.app.model.ShopPrintOrderDetail
@@ -13,8 +11,6 @@ import io.ktor.client.request.setBody
 import io.ktor.http.Parameters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
@@ -22,15 +18,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNot
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -45,11 +34,13 @@ object PrintTask {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val dbDispatcher = Dispatchers.IO.limitedParallelism(1)
     private val printQueue = Channel<ShopPrintOrderDetail>(capacity = 9999)
-    val printQueueFlow =  printQueue.receiveAsFlow()
+    val printQueueFlow = printQueue.receiveAsFlow()
     // 存储当前正在运行的任务 Job
     private val activeJobs = ConcurrentHashMap<String, Job>()
-    // 存储已打印的订单号，防止重复打印 (建议生产环境持久化)
+    // 存储已确认打印成功的订单号（内存 + DB 持久化），用于防止重复入队
     private val printedOrderIds = MutableStateFlow<Map<String, Map<String, ShopPrintOrderItem>>>(emptyMap())
+    // 存储"正在打印中"的订单号（已入队但尚未确认打印成功），用于防止并发重复入队
+    private val printingOrderIds = MutableStateFlow<Set<String>>(emptySet())
     // 观察平台 ID 列表
     private val _platformIds = MutableStateFlow<Set<String>>(emptySet())
 
@@ -62,11 +53,20 @@ object PrintTask {
             printQueueFlow.combine(PrintDevice.currentCheckedPrinterDevice) { data, device ->
                 device to data
             }.filter { (device, _) -> device != null }
-                .collect {(device, data) ->
-                withContext(Dispatchers.IO) {
-                    PrinterManager.print(device!!, PrintTemplate.templateV1(data))
+                .collect { (device, data) ->
+                    val orderKey = "${data.platform}:${data.orderId}"
+                    val result = withContext(Dispatchers.IO) {
+                        PrinterManager.print(device!!, PrintTemplate.templateV1(data))
+                    }
+                    // 打印成功才确认标记，失败则清除"打印中"状态，允许下次重试
+                    when (result) {
+                        is PrintResult.Success -> confirmPrinted(data)
+                        is PrintResult.Error -> {
+                            println("打印失败 [${data.orderId}]: $result，将从打印中状态移除，等待重试")
+                            printingOrderIds.update { it - orderKey }
+                        }
+                    }
                 }
-            }
         }
     }
 
@@ -101,16 +101,18 @@ object PrintTask {
                 println("开始 [$platformId] Time: $startTime")
                 try {
                     val printDetails = executePrintCycle2(platformId, shopId)
-                   //  println("打印 printDetails: $platformId : $printDetails")
                     if (printDetails.isNotEmpty()) {
+                        // 入队前先标记"打印中"，防止后续轮询重复入队
+                        val orderKeys = printDetails.map { "${it.platform}:${it.orderId}" }
+                        printingOrderIds.update { it + orderKeys }
                         for (item in printDetails) {
                             printQueue.send(item)
                         }
-//                        println("打印订单信息: $platformId : $printDetails")
+                        println("平台 $platformId 入队 ${printDetails.size} 条订单")
                     }
                 } catch (e: Exception) {
                     println("平台 $platformId 执行出错: ${e.message}")
-                    delay(5000) // 出错后等待一段时间再重试
+                    delay(5000)
                 }
                 // 每轮任务执行完，等待一小段时间再进入下一轮（避免请求过频）
                 delay(10000)
@@ -144,7 +146,7 @@ object PrintTask {
     }
 
     private suspend fun executePrintCycle2(platformId: String, shopId: String = ""): List<ShopPrintOrderDetail> {
-       val orderIds = withContext(Dispatchers.IO) {
+        val orderIds = withContext(Dispatchers.IO) {
             runCatching {
                 AppRequest.client.post("getDaySeq") {
                     setBody(
@@ -167,7 +169,7 @@ object PrintTask {
                 DesktopAudioPlayer.play2(noticeMav)
             }
         }
-        // 去重复订单
+        // 双重去重：已打印 + 正在打印中
         val filterOrders = filterUnprinted(platformId, orderIds.data.distinctBy { it.orderId })
         if (filterOrders.isEmpty()) return emptyList()
         val orderDetails = withContext(Dispatchers.IO) {
@@ -189,8 +191,8 @@ object PrintTask {
             }.getOrNull()?.data.orEmpty()
         }
         if (orderDetails.isEmpty()) return emptyList()
-        createLogInfo("[${platformId}]获打印信息据成功！(${orderDetails.size}条)")
-        markPrinted(platformId, orderDetails.distinctBy { it.orderId }.map { ShopPrintOrderItem( orderId = it.orderId, daySeq = it.daySeq) }, orderIds.date, shopId)
+        createLogInfo("[${platformId}]获取打印信息成功！(${orderDetails.size}条)")
+        // 注意：这里不再调用 markPrinted，标记动作延迟到 init 块中实际打印成功后
         return orderDetails
     }
 
@@ -222,6 +224,64 @@ object PrintTask {
         DatabaseManager.database.cancelQueries.deleteOlderThanDate(currentDateFormat, shopId)
     }
 
+    /**
+     * 仅在打印机实际打印成功后调用，确认订单已打印完成。
+     * 同时更新内存缓存 + 持久化到 DB，并从"打印中"集合移除。
+     */
+    private fun confirmPrinted(detail: ShopPrintOrderDetail) {
+        val platformId = detail.platform
+        val orderItem = ShopPrintOrderItem(orderId = detail.orderId, daySeq = detail.daySeq)
+        val orderKey = "${platformId}:${detail.orderId}"
+
+        // 1. 更新内存中的已打印缓存
+        printedOrderIds.update { oldMap ->
+            val platformMap = oldMap[platformId].orEmpty().toMutableMap()
+            platformMap[detail.orderId] = orderItem
+            oldMap.toMutableMap().apply {
+                put(platformId, platformMap)
+            }
+        }
+
+        // 2. 从"打印中"集合移除
+        printingOrderIds.update { it - orderKey }
+
+        // 3. 持久化到 DB
+        scope.launch {
+            confirmPrintedDb(platformId, listOf(orderItem))
+        }
+    }
+
+    fun clearPrintedOrderIds() {
+        printedOrderIds.update { emptyMap() }
+    }
+
+    fun createLogInfo(message: String) = HistoryLog.updateData(message)
+
+    private suspend fun confirmPrintedDb(
+        platformId: String,
+        orders: List<ShopPrintOrderItem>,
+        date: String = "",
+        shopId: String = "",
+    ) = withContext(dbDispatcher) {
+        val currentDate: LocalDate = LocalDate.now()
+        val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        val currentDateFormat: String = currentDate.format(formatter)
+        DatabaseManager.database.transaction {
+            orders.forEach {
+                DatabaseManager.database.printorderQueries.insertConnection(
+                    platform_id = platformId,
+                    order_id = it.orderId,
+                    day_seq = it.daySeq,
+                    date = date.ifEmpty { currentDateFormat },
+                    shop_id = shopId
+                )
+            }
+        }
+    }
+
+    /**
+     * 标记已打印（用于手动打印/扫码打印等场景，直接确认已打印）
+     */
     fun markPrinted(
         platformId: String,
         orders: List<ShopPrintOrderItem>,
@@ -229,147 +289,30 @@ object PrintTask {
         shopId: String = ""
     ) {
         printedOrderIds.update { oldMap ->
-
             val oldPlatformMap = oldMap[platformId].orEmpty()
-
             val newPlatformMap = oldPlatformMap.toMutableMap().apply {
                 orders.forEach { order ->
                     put(order.orderId, order)
                 }
             }
-
             oldMap.toMutableMap().apply {
                 put(platformId, newPlatformMap)
             }
         }
         scope.launch {
-            markPrintedDb(
-                platformId,
-                orders,
-                date,
-                shopId
-            )
+            confirmPrintedDb(platformId, orders, date, shopId)
         }
     }
 
-    fun clearPrintedOrderIds() {
-        printedOrderIds.update {
-            emptyMap()
-        }
-    }
-
-
-    fun createLogInfo(
-        message: String
-    ) = HistoryLog.updateData(message)
-
-    suspend fun markPrintedDb(
-        platformId: String,
-        orders: List<ShopPrintOrderItem>,
-        date: String = "",
-        shopId: String = "",
-    ) = withContext(dbDispatcher) {
-            val currentDate: LocalDate = LocalDate.now()
-            val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-            val currentDateFormat: String = currentDate.format(formatter)
-            DatabaseManager.database.transaction {
-                orders.forEach {
-                    DatabaseManager.database.printorderQueries.insertConnection(
-                        platform_id = platformId,
-                        order_id = it.orderId,
-                        day_seq = it.daySeq,
-                        date = date.ifEmpty { currentDateFormat },
-                        shop_id = shopId
-                    )
-                }
-            }
-    }
-
-    fun filterUnprinted (
+    fun filterUnprinted(
         platformId: String,
         orders: List<ShopPrintOrderItem>
     ): List<ShopPrintOrderItem> {
         val printedMap = printedOrderIds.value[platformId].orEmpty()
-        println("printedOrderIds ${platformId}-${printedMap.toList()}" )
-        return orders.filterNot { it.orderId in printedMap }
+        val printingSet = printingOrderIds.value
+        println("printedOrderIds ${platformId}-${printedMap.toList()}")
+        // 双重过滤：已打印成功的 + 正在打印中的，都排除
+        return orders.filterNot { it.orderId in printedMap || "${platformId}:${it.orderId}" in printingSet }
     }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private suspend fun executePrintCycle(platformId: String, shopId: String = "") {
-        // 1. 获取待打印订单
-        flow {
-            val res = AppRequest.client.post("getDaySeq") {
-                setBody(
-                    FormDataContent(
-                        Parameters.build {
-                            append("wmid", platformId)
-                            append("shopid", shopId)
-                            append("secret", "panyishigedashuaige")
-                        }
-                    )
-                )
-            }.body<ShopPrintOrder>()
-            val items = if (res.code == 200 && res.data.isNotEmpty()) {
-                res.data
-            } else {
-                emptyList<ShopPrintOrderItem>()
-            }
-            emit(items)
-        }.map { items ->
-            filterUnprinted(platformId, items)
-        }.flowOn(Dispatchers.IO).flatMapLatest { orderIds ->
-            if (orderIds.isNotEmpty()) {
-                flow {
-                    val orderDetail =  AppRequest.client.post("getOrderList") {
-                        setBody(
-                            FormDataContent(
-                                Parameters.build {
-                                    append("wmid", platformId)
-                                    append("shopid", shopId)
-                                    append("secret", "panyishigedashuaige")
-                                    orderIds.forEach {
-                                        append("orderid_list[]", it.orderId)
-                                    }
-                                }
-                            )
-                        )
-                    }.body<RequestResult<List<ShopPrintOrderDetail>>>()
-                    val items = if (orderDetail.code == 200 && orderDetail.data?.isNotEmpty() == true) {
-                        orderDetail.data
-                    } else {
-                        emptyList<ShopPrintOrderDetail>()
-                    }
-                    emit(items)
-                }.flowOn(Dispatchers.IO)
-            } else {
-               flow {
-                   emit( emptyList<ShopPrintOrderDetail>())
-               }
-            }
-        }.catch {
-            emit( emptyList<ShopPrintOrderDetail>())
-        }.filter {
-            it.isNotEmpty()
-        }.collect {
-            println( "这里开始打印：${it}")
-        }
-    }
-
-    // --- 以下为模拟网络请求的方法 ---
-    private suspend fun fetchPendingOrders(id: String): List<String> {
-        delay(500) // 模拟网络耗时
-        return listOf("${id}_${System.currentTimeMillis() / 10000}")
-    }
-
-    private suspend fun fetchOrderItems(orderId: String): List<String> {
-        delay(300)
-        return listOf("商品A", "商品B", "商品C")
-    }
-
-    private fun printData(order: String, items: List<String>): Boolean {
-        println("正在打印平台订单: ${order}, 商品: $items")
-        return true
-    }
-
 
 }
