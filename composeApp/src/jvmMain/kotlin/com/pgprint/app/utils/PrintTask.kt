@@ -102,13 +102,19 @@ object PrintTask {
                 try {
                     val printDetails = executePrintCycle2(platformId, shopId)
                     if (printDetails.isNotEmpty()) {
-                        // 入队前先标记"打印中"，防止后续轮询重复入队
+                        // 🔑 入队前先持久化到 DB，保证重启后 loadPrintedOrdersFromDb 能恢复
+                        val orderItems = printDetails.map {
+                            ShopPrintOrderItem(orderId = it.orderId, daySeq = it.daySeq)
+                        }
+                        confirmPrintedDb(platformId, orderItems, shopId = shopId)
+
+                        // 标记"打印中"，用于运行时内存去重（跨轮询）
                         val orderKeys = printDetails.map { "${it.platform}:${it.orderId}" }
                         printingOrderIds.update { it + orderKeys }
                         for (item in printDetails) {
                             printQueue.send(item)
                         }
-                        println("平台 $platformId 入队 ${printDetails.size} 条订单")
+                        println("平台 $platformId 入队 ${printDetails.size} 条订单（已预写DB）")
                     }
                 } catch (e: Exception) {
                     println("平台 $platformId 执行出错: ${e.message}")
@@ -192,7 +198,7 @@ object PrintTask {
         }
         if (orderDetails.isEmpty()) return emptyList()
         createLogInfo("[${platformId}]获取打印信息成功！(${orderDetails.size}条)")
-        // 注意：这里不再调用 markPrinted，标记动作延迟到 init 块中实际打印成功后
+        // DB预写入在 startPollingTask 入队前完成，内存标记在 init 中打印成功后才更新
         return orderDetails
     }
 
@@ -225,15 +231,15 @@ object PrintTask {
     }
 
     /**
-     * 仅在打印机实际打印成功后调用，确认订单已打印完成。
-     * 同时更新内存缓存 + 持久化到 DB，并从"打印中"集合移除。
+     * 实际打印成功后调用：更新内存缓存 + 从"打印中"集合移除。
+     * 注意：DB 写入已在 startPollingTask 入队前完成，此处不再重复。
      */
     private fun confirmPrinted(detail: ShopPrintOrderDetail) {
         val platformId = detail.platform
         val orderItem = ShopPrintOrderItem(orderId = detail.orderId, daySeq = detail.daySeq)
         val orderKey = "${platformId}:${detail.orderId}"
 
-        // 1. 更新内存中的已打印缓存
+        // 1. 更新内存中的已打印缓存（用于 UI 显示 + filterUnprinted）
         printedOrderIds.update { oldMap ->
             val platformMap = oldMap[platformId].orEmpty().toMutableMap()
             platformMap[detail.orderId] = orderItem
@@ -244,11 +250,6 @@ object PrintTask {
 
         // 2. 从"打印中"集合移除
         printingOrderIds.update { it - orderKey }
-
-        // 3. 持久化到 DB
-        scope.launch {
-            confirmPrintedDb(platformId, listOf(orderItem))
-        }
     }
 
     fun clearPrintedOrderIds() {
