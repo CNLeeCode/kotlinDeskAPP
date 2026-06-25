@@ -19,10 +19,12 @@ import com.pgprint.app.utils.PrintTask
 import com.pgprint.app.utils.PrinterManager
 import com.pgprint.app.utils.UpdateManager
 import io.ktor.client.call.body
-import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.request.forms.submitForm
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.Parameters
 import io.ktor.util.Platform
 import kotlinx.coroutines.Dispatchers
@@ -216,30 +218,37 @@ class DefaultHomeComponent (
 
     override fun printSingleDoc(shopId: String,  wmId: String, daySeq: String) {
         scope.launch {
-            val printData =  withContext(Dispatchers.IO) {
+            println("[printSingleDoc] wmid=$wmId, shopId=$shopId, day_seq=$daySeq")
+            val result = withContext(Dispatchers.IO) {
                 runCatching {
-                    AppRequest.client.post("getOrder") {
-                        setBody(
-                            FormDataContent(
-                                Parameters.build {
-                                    append("wmid", wmId)
-                                    append("shopid", shopId)
-                                    append("day_seq", daySeq)
-                                    append("secret", "panyishigedashuaige")
-
-                                }
-                            )
-                        )
-                    }.body<RequestResult<ShopPrintOrderDetail>>()
-                }.getOrNull()
+                    AppRequest.client.submitForm(
+                        url = "getOrder",
+                        formParameters = Parameters.build {
+                            append("wmid", wmId)
+                            append("shopid", shopId)
+                            append("day_seq", daySeq)
+                            append("secret", "panyishigedashuaige")
+                        }
+                    ).body<RequestResult<ShopPrintOrderDetail>>()
+                }
             }
-
-            printData?.let {
-                AppToast.showToast(it.msg)
-            }
-
-            printData?.data?.let {
-                PrintTask.singlePrint(it)
+            result.onSuccess { printData ->
+                if (printData.data != null) {
+                    PrintTask.singlePrint(printData.data!!)
+                }
+                AppToast.showToast(printData.msg)
+            }.onFailure { e ->
+                println("[printSingleDoc] 查询失败: ${e.javaClass.simpleName}: ${e.message}")
+                // 尝试读取错误响应体
+                if (e is ClientRequestException) {
+                    try {
+                        val errorBody = e.response.bodyAsText()
+                        println("[printSingleDoc] 错误响应体(前500字符): ${errorBody.take(500)}")
+                    } catch (ex: Exception) {
+                        println("[printSingleDoc] 无法读取错误响应体: ${ex.message}")
+                    }
+                }
+                AppToast.showToast("查询失败：${e.message}")
             }
         }
     }

@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = "1.0.6"
+val myAppVersion = project.findProperty("appVersion")?.toString() ?: "1.0.6"
 val domainUrl = "http://wm.butsdgc.com"
 // val DOMAIN_URL = "http://39.98.37.44"
 plugins {
@@ -53,6 +53,8 @@ kotlin {
             //sqldelight
             implementation("app.cash.sqldelight:runtime:2.2.1")
 
+            implementation("com.velopack:velopack:0.0.923")
+
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -103,7 +105,7 @@ compose.desktop {
             "-Dsun.jnu.encoding=UTF-8"
         )
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
             packageName = "pgprinter"
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"

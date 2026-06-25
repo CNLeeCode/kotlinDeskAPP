@@ -1,8 +1,6 @@
 package com.pgprint.app
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +8,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.LocalMinimumInteractiveComponentEnforcement
 import androidx.compose.material.Text
@@ -18,7 +15,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,14 +22,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.ComposeWindow
-import androidx.compose.ui.awt.SwingWindow
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.window.MenuBar
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
@@ -43,28 +36,20 @@ import com.arkivanov.decompose.extensions.compose.lifecycle.LifecycleController
 import com.arkivanov.essenty.lifecycle.LifecycleOwner
 import com.arkivanov.essenty.lifecycle.LifecycleRegistry
 import com.arkivanov.essenty.lifecycle.subscribe
-import com.pgprint.app.component.AppFooter
 import com.pgprint.app.router.DefaultRootComponent
 import com.pgprint.app.router.RootContent
 import com.pgprint.app.utils.AppColors
-import com.pgprint.app.utils.AppRequest
 import com.pgprint.app.utils.AppStrings
 import com.pgprint.app.utils.AppToast
 import com.pgprint.app.utils.CrashHandler
-import com.pgprint.app.utils.DatabaseManager
-import com.pgprint.app.utils.DesktopTool
 import com.pgprint.app.utils.PersistentCache
-import com.pgprint.app.utils.PrintTask
-import com.pgprint.app.utils.UpdateManager
+import com.pgprint.app.utils.UpdateBuilder
 import com.pgprint.app.utils.Utils
-import io.ktor.client.request.head
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pgprint.composeapp.generated.resources.Res
@@ -73,8 +58,8 @@ import pgprint.composeapp.generated.resources.copyright
 import pgprint.composeapp.generated.resources.exit
 import pgprint.composeapp.generated.resources.file
 import pgprint.composeapp.generated.resources.log
-import pgprint.composeapp.generated.resources.setting
 import pgprint.composeapp.generated.resources.update
+import kotlin.system.exitProcess
 
 fun LifecycleOwner.componentScope(): CoroutineScope {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -84,14 +69,22 @@ fun LifecycleOwner.componentScope(): CoroutineScope {
 
 
 @OptIn(ExperimentalMaterialApi::class)
-fun main() = application {
+fun main(args: Array<String>) = application {
+    //velopack
+    if (args.isNotEmpty()) {
+        val firstArg = args[0]
+        if (firstArg.startsWith("--velopack-")) {
+            // 收到 Velopack 的系统事件，直接退出进程（让 Velopack 默默在后台处理快捷方式等逻辑）
+            exitProcess(0)
+        }
+    }
+
     val version = BuildConfig.APP_VERSION
     System.setProperty("skiko.renderApi", "SOFTWARE")
     CrashHandler.init()
 
     val lifecycle = LifecycleRegistry()
     // Always create the root component outside Compose on the UI thread
-
     val root = Utils.runOnUiThread {
         DefaultRootComponent(
             componentContext = DefaultComponentContext(lifecycle = lifecycle),
@@ -113,11 +106,15 @@ fun main() = application {
         var aboutWindowShow by remember {
             mutableStateOf(false)
         }
+        val uriHandler = LocalUriHandler.current
+        val corSccope = rememberCoroutineScope()
         MenuBar {
             Menu("菜单", mnemonic = 'F') {
 //                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
-                Item("常见问题", onClick = { Utils.openFAQPage() }, icon = painterResource(Res.drawable.cjwt))
-                Item("前往下载", onClick = { Utils.openDownloadPage() }, icon = painterResource(Res.drawable.update))
+                Item("常见问题", onClick = { uriHandler.openUri( Utils.openFAQPage())  }, icon = painterResource(Res.drawable.cjwt))
+                Item("前往下载", onClick = {  uriHandler.openUri(Utils.openDownloadPage()) }, icon = painterResource(Res.drawable.update))
+                Item("静默下载（beat）", onClick = {   UpdateBuilder.checkVelopackUpdate() }, icon = painterResource(Res.drawable.update))
+
                 Separator() // 分割线
                 Item("退出", onClick = ::exitApplication , icon = painterResource(Res.drawable.exit))
             }

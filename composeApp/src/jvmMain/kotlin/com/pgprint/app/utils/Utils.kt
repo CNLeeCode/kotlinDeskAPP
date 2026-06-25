@@ -173,12 +173,12 @@ object Utils {
         return 0
     }
 
-    fun openDownloadPage() {
-        DesktopTool.openBrowser("${DOMAIN_URL}/index.php/Home/WmPrintLee/getDownloadPage")
+    fun openDownloadPage(): String {
+       return "${DOMAIN_URL}/index.php/Home/WmPrintLee/getDownloadPage"
     }
 
-    fun openFAQPage() {
-        DesktopTool.openBrowser("${DOMAIN_URL}/index.php/Home/WmPrintLee/faq")
+    fun openFAQPage(): String {
+        return "${DOMAIN_URL}/index.php/Home/WmPrintLee/faq"
     }
 
     fun copyToClipboard(text: String) {

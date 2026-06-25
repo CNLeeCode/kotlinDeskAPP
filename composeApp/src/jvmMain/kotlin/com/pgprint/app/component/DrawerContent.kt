@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pgprint.app.model.PrintPlatform
+import com.pgprint.app.model.ShopPrintOrderItem
 import com.pgprint.app.utils.AppColors
 import com.pgprint.app.utils.DesktopToastQueue
 import org.jetbrains.compose.resources.painterResource
@@ -52,6 +53,7 @@ import pgprint.composeapp.generated.resources.Res
 fun DrawerContent(
     modifier: Modifier = Modifier,
     printPlatformList: List<PrintPlatform>,
+    printedOrderMapList: Map<String, Map<String, ShopPrintOrderItem>> = emptyMap(),
     onPrint: (daySeq: String, wmId: String) -> Unit,
     onClose: () -> Unit = {}
 ) {
@@ -139,7 +141,15 @@ fun DrawerContent(
                 Button(
                     onClick = {
                         if (inputValue.isNotEmpty()) {
-                            onPrint(inputValue, selected)
+                            // 用户可能输入的是 daySeq（流水号，如 #5），也可能输入的是 orderId
+                            // getOrder 接口实际需要的是 orderId，所以先尝试从已打印列表查找
+                            val platformOrders = printedOrderMapList[selected]?.values.orEmpty()
+                            val matchedOrder = platformOrders.find {
+                                it.daySeq == inputValue || it.orderId == inputValue
+                            }
+                            // 找到了就用 orderId，没找到就用原始输入（可能是新订单或手动输入 orderId）
+                            val queryValue = matchedOrder?.orderId ?: inputValue
+                            onPrint(queryValue, selected)
                         }
                     },
                     colors = ButtonDefaults.buttonColors(

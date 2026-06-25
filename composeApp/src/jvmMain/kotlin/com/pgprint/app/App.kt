@@ -46,6 +46,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.compose.AppTheme
@@ -181,6 +182,7 @@ fun App(
                         }
                         else -> emptyList()
                     },
+                    printedOrderMapList = printedOrderMapList,
                     onPrint = remember(shopId) {
                         { daySeq, wmId ->
                             component.printSingleDoc(shopId, wmId, daySeq)
@@ -395,7 +397,7 @@ fun AppHeaderView(
     appLastVersion: AppVersion,
     onChangeShopAction: () -> Unit
 ) {
-
+    val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
     val isNeedUpdate by derivedStateOf {
         Utils.compareVersion( appLastVersion.version, APP_VERSION) > 0
@@ -426,7 +428,8 @@ fun AppHeaderView(
 
                 val textModifier = Modifier.clickable(
                     onClick = {
-                        Utils.openDownloadPage()
+                        uriHandler.openUri(Utils.openDownloadPage())
+
                     }
                 )
 

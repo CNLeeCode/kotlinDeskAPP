@@ -35,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,7 +103,7 @@ fun Splash(
                         UiStateUpdateView(
                             version = state.data.version,
                             toLoginPage = component::toLoginPage,
-                            toDownloadPage = Utils::openDownloadPage
+
                         )
                     }
                     is AppVersionState.Usual -> {
@@ -161,9 +162,9 @@ fun UiStateErrorView(
 fun UiStateUpdateView(
     modifier: Modifier = Modifier,
     version: String,
-    toDownloadPage: () -> Unit,
     toLoginPage: () -> Unit
 ) {
+    val uriHandler = LocalUriHandler.current
     Row (
         modifier = modifier.width(400.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -179,7 +180,9 @@ fun UiStateUpdateView(
             }
         ) {
             Button(
-                onClick = toDownloadPage,
+                onClick = {
+                    uriHandler.openUri(Utils.openDownloadPage())
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AppColors.PrimaryColor
                 )
