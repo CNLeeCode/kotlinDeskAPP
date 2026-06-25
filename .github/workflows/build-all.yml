@@ -2,87 +2,46 @@ name: Build Multiplatform App
 
 on:
   push:
-    tags:
-      - 'v*' # 只有当推送以 v 开头的 tag（如 v1.0.86）时才触发打包
-  workflow_dispatch: # 同时保留手动触发能力
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
-  # --- 编译 Windows 版本 (生成 MSI/EXE 并使用 Velopack 二次打包) ---
+  # --- 编译 Windows 版本 (MSI 和 EXE) ---
   build-windows:
-    name: Build Windows Release
+    name: Build Windows Artifacts
     runs-on: windows-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      # 1. 解析 Tag 提取纯数字版本号
-      - name: Extract Version from Tag
-        shell: bash
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION="1.0.86.${{ github.run_number }}"
-          fi
-          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
+          # cache: 'gradle' # 如果之前报错 tar.exe，保持注释
 
-      # 2. 安装 Velopack CLI Tool (vpk)
-      - name: Install Velopack CLI
-        shell: powershell
-        run: |
-          dotnet tool install -g vpk
-
-      # 3. 运行你百分百成功的原生任务 (同时注入动态版本号)
       - name: Build Windows Distributions
         shell: cmd
-        run: gradlew.bat packageDistribution -PappVersion="${{ env.APP_VERSION }}"
+        # packageDistribution 会根据 build.gradle.kts 里的 targetFormats 生成所有格式
+        run: gradlew.bat packageDistribution
 
-      # 4. 使用 Velopack 对 packageDistribution 产出的绿色版进行二次打包
-      # 无论外层怎么报错，Gradle 编译出来的绿色版绝对在这个文件夹里
-      - name: Velopack Pack Windows
-        shell: powershell
-        run: |
-          vpk pack --packId "pgprinter" --packVersion "${{ env.APP_VERSION }}" --packDir "composeApp/build/compose/binaries/main/app/pgprinter" --mainExe "pgprinter.exe" --outputDir "build/velopack"
-
-      # 5. 自动发布到 GitHub Releases (自动处理增量补丁)
-      - name: Velopack Deploy to GitHub
-        shell: powershell
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --outputDir "build/velopack"
-          vpk upload github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --publish --publishToken "$env:GH_TOKEN" --releaseName "v${{ env.APP_VERSION }}" --tag "v${{ env.APP_VERSION }}" --packDir "build/velopack"
-
-      # 6. 上传本地 Velopack 的产物 (包含酷炫的自动升级 Setup.exe)
-      - name: Upload Windows Velopack Artifacts
+      - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pgprinter-windows-velopack
-          path: build/velopack/*
+          name: pgprint-windows-binaries
+          # 使用多行路径，同时捕获 msi 和 exe
+          path: |
+            **/build/compose/binaries/main/msi/*.msi
+            **/build/compose/binaries/main/exe/*.exe
 
-  # --- 编译 macOS 版本 (生成 DMG 并使用 Velopack 二次打包) ---
+  # --- 编译 macOS 版本 ---
   build-mac:
-    name: Build macOS Release
+    name: Build macOS DMG
     runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      # 1. 解析 Tag 提取纯数字版本号
-      - name: Extract Version from Tag
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            VERSION="1.0.86"
-          fi
-          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -91,24 +50,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 2. 安装 macOS 的 Velopack CLI (vpk)
-      - name: Install Velopack CLI
-        run: |
-          dotnet tool install -g vpk
-          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+      - name: Build DMG
+        run: ./gradlew packageDmg
 
-      # 3. 运行你百分百成功的原生 Mac 任务
-      - name: Build macOS Dmg
-        run: ./gradlew packageDmg -PappVersion="${{ env.APP_VERSION }}"
-
-      # 4. 使用 Velopack 对生成的 Mac 资产进行二次打包
-      - name: Velopack Pack Mac
-        run: |
-          vpk pack --packId "pgprinter" --packVersion "${{ env.APP_VERSION }}" --packDir "composeApp/build/compose/binaries/main/app" --outputDir "build/velopack"
-
-      # 5. 上传 Mac Velopack 产物 (会生成 .pkg 安装包)
-      - name: Upload Mac Velopack Artifacts
+      - name: Upload Mac DMG
         uses: actions/upload-artifact@v4
         with:
-          name: pgprinter-mac-velopack
-          path: build/velopack/*
+          name: pgprint-mac-dmg
+          path: "**/build/compose/binaries/main/dmg/*.dmg"
