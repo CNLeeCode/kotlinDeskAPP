@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = project.findProperty("appVersion")?.toString() ?: "1.0.6"
+val myAppVersion = project.findProperty("appVersion")?.toString() ?: "1.0.7"
 val domainUrl = "http://wm.butsdgc.com"
 // val DOMAIN_URL = "http://39.98.37.44"
 plugins {
@@ -52,8 +52,6 @@ kotlin {
             implementation("io.coil-kt.coil3:coil-compose:3.3.0")
             //sqldelight
             implementation("app.cash.sqldelight:runtime:2.2.1")
-
-            implementation("com.velopack:velopack:0.0.923")
 
             implementation(compose.runtime)
             implementation(compose.foundation)
