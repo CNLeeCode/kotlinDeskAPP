@@ -1,7 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import java.lang.System.console
 
-val myAppVersion = project.findProperty("appVersion")?.toString() ?: "1.0.87"
+val myAppVersion = "1.0.7"
 val domainUrl = "http://wm.butsdgc.com"
 // val DOMAIN_URL = "http://39.98.37.44"
 plugins {
@@ -103,7 +103,7 @@ compose.desktop {
             "-Dsun.jnu.encoding=UTF-8"
         )
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Exe)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "pgprinter"
             packageVersion = myAppVersion
             copyright = "2025 BUTCOMPANY"

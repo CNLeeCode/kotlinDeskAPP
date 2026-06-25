@@ -70,14 +70,6 @@ fun LifecycleOwner.componentScope(): CoroutineScope {
 
 @OptIn(ExperimentalMaterialApi::class)
 fun main(args: Array<String>) = application {
-    //velopack
-    if (args.isNotEmpty()) {
-        val firstArg = args[0]
-        if (firstArg.startsWith("--velopack-")) {
-            // 收到 Velopack 的系统事件，直接退出进程（让 Velopack 默默在后台处理快捷方式等逻辑）
-            exitProcess(0)
-        }
-    }
 
     val version = BuildConfig.APP_VERSION
     System.setProperty("skiko.renderApi", "SOFTWARE")
@@ -107,14 +99,11 @@ fun main(args: Array<String>) = application {
             mutableStateOf(false)
         }
         val uriHandler = LocalUriHandler.current
-        val corSccope = rememberCoroutineScope()
         MenuBar {
             Menu("菜单", mnemonic = 'F') {
 //                Item("设置", onClick = { /* 打开设置 */ }, icon = painterResource(Res.drawable.setting))
                 Item("常见问题", onClick = { uriHandler.openUri( Utils.openFAQPage())  }, icon = painterResource(Res.drawable.cjwt))
                 Item("前往下载", onClick = {  uriHandler.openUri(Utils.openDownloadPage()) }, icon = painterResource(Res.drawable.update))
-                Item("静默下载（beat）", onClick = {   UpdateBuilder.checkVelopackUpdate() }, icon = painterResource(Res.drawable.update))
-
                 Separator() // 分割线
                 Item("退出", onClick = ::exitApplication , icon = painterResource(Res.drawable.exit))
             }
