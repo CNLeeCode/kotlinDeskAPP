@@ -3,8 +3,8 @@ name: Build Multiplatform App
 on:
   push:
     tags:
-      - 'v*' # 只有当推送以 v 开头的 tag（如 v1.0.6）时才触发打包
-  workflow_dispatch: # 同时保留手动触发能力（方便后台调试）
+      - 'v*' # 只有当推送以 v 开头的 tag（如 v1.0.86）时才触发打包
+  workflow_dispatch: # 同时保留手动触发能力（手动运行时版本号会加上 run_number）
 
 jobs:
   # --- 编译 Windows 版本 (使用 Velopack) ---
@@ -15,14 +15,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 解析 Tag 提取版本号 (例如把 refs/tags/v1.0.6 变成 1.0.6)
+      # 1. 解析 Tag 提取版本号 (修复非纯数字报错问题)
       - name: Extract Version from Tag
         shell: bash
         run: |
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           else
-            VERSION="1.0.61"
+            VERSION="1.0.86.${{ github.run_number }}"
           fi
           echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
@@ -38,15 +38,13 @@ jobs:
         run: |
           dotnet tool install -g vpk
 
-      # 3. 生成 Windows 免安装包 (AppImage)，并把 tag 版本号注入 Gradle
-      # 注意：如果你的项目没有嵌套 composeApp 目录，把开头的 :composeApp: 删掉
+      # 3. 编译 Windows 免安装绿色版（新版 Compose 插件对应的任务是 packageAppDir）
       - name: Build Windows App Image
         shell: cmd
-        run: gradlew.bat :composeApp:packageAppImage -PappVersion="${{ env.APP_VERSION }}"
+        run: gradlew.bat :composeApp:packageAppDir -PappVersion="${{ env.APP_VERSION }}"
 
       # 4. 使用 Velopack 打包
-      # --packDir 必须直接指向含有 pgprinter.exe 的那层文件夹
-      # --outputDir 强制锁定输出到 build/velopack
+      # --packDir 精准指向 packageAppDir 生成的 pgprinter 二进制根目录
       - name: Velopack Pack Windows
         shell: powershell
         run: |
@@ -61,7 +59,7 @@ jobs:
           vpk download github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --outputDir "build/velopack"
           vpk upload github --repoUrl "${{ github.server_url }}/${{ github.repository }}" --publish --publishToken "$env:GH_TOKEN" --releaseName "v${{ env.APP_VERSION }}" --tag "v${{ env.APP_VERSION }}" --packDir "build/velopack"
 
-      # 6. 归档并保存本地 Velopack 的产物 (包含 Setup.exe, RELEASES 和 nupkg 增量包)
+      # 6. 归档并保存本地 Velopack 的产物 (包含 Setup.exe)
       - name: Upload Windows Velopack Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -82,7 +80,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             VERSION=${GITHUB_REF#refs/tags/v}
           else
-            VERSION="1.0.61"
+            VERSION="1.0.86"
           fi
           echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
@@ -99,16 +97,16 @@ jobs:
           dotnet tool install -g vpk
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
-      # 3. 生成 macOS 的免安装 .app 文件夹，并注入版本号
+      # 3. 编译 macOS 绿色版应用程序
       - name: Build macOS App
         run: ./gradlew :composeApp:packageApp -PappVersion="${{ env.APP_VERSION }}"
 
-      # 4. 使用 Velopack 对 .app 进行打包，强制输出到 build/velopack
+      # 4. 使用 Velopack 对 .app 进行打包
       - name: Velopack Pack Mac
         run: |
           vpk pack --packId "pgprinter" --packVersion "${{ env.APP_VERSION }}" --packDir "composeApp/build/compose/binaries/main/app" --outputDir "build/velopack"
 
-      # 5. 上传 Mac Velopack 产物 (会生成 .pkg 安装包和更新所需的 json/zip)
+      # 5. 上传 Mac Velopack 产物 (会生成 .pkg 安装包)
       - name: Upload Mac Velopack Artifacts
         uses: actions/upload-artifact@v4
         with:
