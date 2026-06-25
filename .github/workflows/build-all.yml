@@ -4,7 +4,7 @@ on:
   push:
     tags:
       - 'v*' # 只有当推送以 v 开头的 tag（如 v1.0.86）时才触发打包
-  workflow_dispatch: # 同时保留手动触发能力（手动运行时版本号会加上 run_number）
+  workflow_dispatch: # 同时保留手动触发能力
 
 jobs:
   # --- 编译 Windows 版本 (使用 Velopack) ---
@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 1. 解析 Tag 提取版本号 (修复非纯数字报错问题)
+      # 1. 解析 Tag 提取版本号
       - name: Extract Version from Tag
         shell: bash
         run: |
@@ -38,13 +38,13 @@ jobs:
         run: |
           dotnet tool install -g vpk
 
-      # 3. 编译 Windows 免安装绿色版（新版 Compose 插件对应的任务是 packageAppDir）
-      - name: Build Windows App Image
+      # 3. 换回你最初百分百能跑通的全局任务：packageDistribution
+      - name: Build Windows Distributions
         shell: cmd
-        run: gradlew.bat :composeApp:packageAppDir -PappVersion="${{ env.APP_VERSION }}"
+        run: gradlew.bat packageDistribution -PappVersion="${{ env.APP_VERSION }}"
 
       # 4. 使用 Velopack 打包
-      # --packDir 精准指向 packageAppDir 生成的 pgprinter 二进制根目录
+      # 只要 packageDistribution 运行成功，这个 app/pgprinter 绿色版目录就一定会被创建出来
       - name: Velopack Pack Windows
         shell: powershell
         run: |
@@ -97,11 +97,11 @@ jobs:
           dotnet tool install -g vpk
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
-      # 3. 编译 macOS 绿色版应用程序
-      - name: Build macOS App
-        run: ./gradlew :composeApp:packageApp -PappVersion="${{ env.APP_VERSION }}"
+      # 3. 换回你最初百分百能跑通的 Mac 任务：packageDmg
+      - name: Build macOS Dmg
+        run: ./gradlew packageDmg -PappVersion="${{ env.APP_VERSION }}"
 
-      # 4. 使用 Velopack 对 .app 进行打包
+      # 4. 使用 Velopack 对生成的 .app 进行打包
       - name: Velopack Pack Mac
         run: |
           vpk pack --packId "pgprinter" --packVersion "${{ env.APP_VERSION }}" --packDir "composeApp/build/compose/binaries/main/app" --outputDir "build/velopack"
