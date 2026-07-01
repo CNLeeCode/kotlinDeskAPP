@@ -18,8 +18,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -50,23 +50,22 @@ object PrintTask {
 
     init {
         scope.launch {
-            printQueueFlow.combine(PrintDevice.currentCheckedPrinterDevice) { data, device ->
-                device to data
-            }.filter { (device, _) -> device != null }
-                .collect { (device, data) ->
-                    val orderKey = "${data.platform}:${data.orderId}"
-                    val result = withContext(Dispatchers.IO) {
-                        PrinterManager.print(device!!, PrintTemplate.templateV1(data))
-                    }
-                    // 打印成功才确认标记，失败则清除"打印中"状态，允许下次重试
-                    when (result) {
-                        is PrintResult.Success -> confirmPrinted(data)
-                        is PrintResult.Error -> {
-                            println("打印失败 [${data.orderId}]: $result，将从打印中状态移除，等待重试")
-                            printingOrderIds.update { it - orderKey }
-                        }
+            printQueueFlow.collect { data ->
+                // 直接从队列取元素；若当前无可用打印机则挂起等待，避免订单丢失
+               val device = PrintDevice.currentCheckedPrinterDevice.value
+                   ?: PrintDevice.currentCheckedPrinterDevice.filterNotNull().first()
+               val result = withContext(Dispatchers.IO) {
+                    PrinterManager.print(device, PrintTemplate.templateV1(data))
+                }
+                // 无论成功或失败都标记到列表，失败可手动"重打"
+                when (result) {
+                    is PrintResult.Success -> confirmPrinted(data)
+                    is PrintResult.Error -> {
+                        println("打印失败 [${data.orderId}]: $result，已标记到列表")
+                        confirmPrinted(data)
                     }
                 }
+            }
         }
     }
 

@@ -134,7 +134,7 @@ fun App(
         ) {
             PrintTask.updatePlatforms(checkedPrintPlatform.toSet(), shopId)
         }
-        if (checkedPrintPlatform.isEmpty()) {
+        if (checkedPrintPlatform.isEmpty() || currentCheckedPrinterDevice == null) {
             PrintTask.stopPollingTask()
         }
     }
